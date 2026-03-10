@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WealthMap — Financial Planning Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0e0f13;
+    --surface: #16181f;
+    --card: #1c1f2a;
+    --border: #2a2d3a;
+    --accent: #c9a96e;
+    --accent2: #7eb8a4;
+    --accent3: #e07b6b;
+    --text: #e8e6df;
+    --muted: #7a7d8a;
+    --highlight: #f0e6d2;
+    --green: #4caf82;
+    --red: #e07b6b;
+    --blue: #6ba3d6;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* ─── HEADER ─── */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 22px 48px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(14,15,19,0.9);
+    position: sticky; top:0; z-index:100;
+    backdrop-filter: blur(12px);
+  }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-mark {
+    width:36px; height:36px; border-radius:8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display:flex; align-items:center; justify-content:center;
+    font-family: 'DM Serif Display', serif;
+    font-size:18px; color:#0e0f13; font-weight:700;
+  }
+  .logo-text { font-family:'DM Serif Display',serif; font-size:20px; color:var(--highlight); }
+  .logo-sub { font-size:11px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; }
+  .step-indicator {
+    display:flex; align-items:center; gap:8px;
+  }
+  .step-dot {
+    width:8px; height:8px; border-radius:50%;
+    background: var(--border); transition: all .3s;
+    cursor: pointer;
+  }
+  .step-dot.active { background: var(--accent); transform: scale(1.4); }
+  .step-dot.done { background: var(--accent2); }
+
+  /* ─── MAIN LAYOUT ─── */
+  main { max-width:960px; margin:0 auto; padding:48px 24px 80px; }
+  .page { display:none; animation: fadeUp .4s ease; }
+  .page.active { display:block; }
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(16px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .page-header { margin-bottom:36px; }
+  .page-label {
+    font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+    color: var(--accent); margin-bottom:8px;
+  }
+  .page-title {
+    font-family:'DM Serif Display',serif;
+    font-size:clamp(24px,4vw,38px); color:var(--highlight); line-height:1.15;
+  }
+  .page-desc { margin-top:10px; color:var(--muted); font-size:15px; max-width:600px; line-height:1.6; }
+
+  /* ─── GRID ─── */
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  @media(max-width:600px) { .grid2,.grid3 { grid-template-columns:1fr; } }
+  .full { grid-column:1/-1; }
+
+  /* ─── FORM ELEMENTS ─── */
+  .field { display:flex; flex-direction:column; gap:6px; }
+  label {
+    font-size:12px; font-weight:600; letter-spacing:.05em;
+    text-transform:uppercase; color:var(--muted);
+  }
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    padding: 12px 16px;
+    width:100%;
+    transition: border-color .2s, box-shadow .2s;
+    outline:none;
+    appearance:none;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(201,169,110,.12);
+  }
+  select option { background: #1c1f2a; }
+  textarea { resize:vertical; min-height:80px; }
+  .hint { font-size:11px; color:var(--muted); margin-top:2px; }
+
+  /* ─── RANGE SLIDER ─── */
+  .range-wrap { display:flex; flex-direction:column; gap:8px; }
+  .range-row { display:flex; align-items:center; gap:12px; }
+  input[type=range] {
+    flex:1; -webkit-appearance:none; appearance:none;
+    height:4px; background:var(--border); border-radius:2px; outline:none; border:none; padding:0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; border-radius:50%;
+    background:var(--accent); cursor:pointer; border:3px solid var(--bg);
+  }
+  .range-val {
+    min-width:48px; text-align:right;
+    font-size:15px; font-weight:600; color:var(--accent);
+  }
+
+  /* ─── CARD ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius:14px;
+    padding:22px 24px;
+  }
+  .card-title {
+    font-size:13px; font-weight:600; letter-spacing:.04em;
+    text-transform:uppercase; color:var(--muted); margin-bottom:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card-title span { color:var(--accent); font-size:18px; }
+
+  /* ─── RISK CARDS ─── */
+  .risk-options { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+  @media(max-width:640px) { .risk-options { grid-template-columns:1fr 1fr; } }
+  .risk-opt {
+    background: var(--card); border:2px solid var(--border);
+    border-radius:12px; padding:16px 12px; cursor:pointer;
+    transition: all .2s; text-align:center;
+  }
+  .risk-opt:hover { border-color: var(--accent); transform:translateY(-2px); }
+  .risk-opt.selected { border-color:var(--accent); background:rgba(201,169,110,.08); }
+  .risk-opt .icon { font-size:24px; margin-bottom:8px; }
+  .risk-opt .rlabel { font-size:12px; font-weight:600; color:var(--accent); }
+  .risk-opt .rdesc { font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4; }
+
+  /* ─── ASSET ALLOCATION ─── */
+  .alloc-row {
+    display:grid; grid-template-columns:130px 1fr 60px;
+    align-items:center; gap:14px; padding:10px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .alloc-row:last-child { border-bottom:none; }
+  .alloc-name { font-size:13px; font-weight:500; display:flex; align-items:center; gap:8px; }
+  .alloc-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .alloc-total {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 0 0; margin-top:4px;
+    border-top: 2px solid var(--border);
+    font-weight:600;
+  }
+  .alloc-total .tv { font-size:18px; color:var(--accent); }
+  .bar-chart {
+    display:flex; height:12px; border-radius:6px; overflow:hidden; margin-top:16px; gap:2px;
+  }
+  .bar-seg { height:100%; border-radius:3px; transition: width .5s ease; }
+
+  /* ─── GOALS ─── */
+  .goal-card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:18px 20px; position:relative;
+    transition: border-color .2s;
+  }
+  .goal-card:hover { border-color: var(--accent2); }
+  .goal-remove {
+    position:absolute; top:14px; right:14px;
+    background:rgba(224,123,107,.15); border:none; color:var(--accent3);
+    width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:14px;
+    display:flex; align-items:center; justify-content:center; transition: background .2s;
+  }
+  .goal-remove:hover { background:rgba(224,123,107,.3); }
+  .add-goal-btn {
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    border:2px dashed var(--border); border-radius:12px; padding:18px;
+    cursor:pointer; color:var(--muted); font-size:14px; transition: all .2s;
+    background:transparent;
+    width:100%;
+  }
+  .add-goal-btn:hover { border-color:var(--accent2); color:var(--accent2); }
+
+  /* ─── HOLDINGS ─── */
+  .holding-row {
+    display:grid; grid-template-columns:1fr 1fr 100px 36px;
+    gap:10px; align-items:center; margin-bottom:10px;
+  }
+  @media(max-width:580px) { .holding-row { grid-template-columns:1fr 1fr; gap:8px; } }
+  .remove-btn {
+    background:none; border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); cursor:pointer; padding:10px; font-size:16px; transition: all .2s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .remove-btn:hover { background:rgba(224,123,107,.15); border-color:var(--accent3); color:var(--accent3); }
+  .add-row-btn {
+    background:none; border:1px dashed var(--border); border-radius:8px;
+    color:var(--muted); cursor:pointer; padding:10px 16px; font-size:13px;
+    transition: all .2s; margin-top:4px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .add-row-btn:hover { border-color:var(--accent2); color:var(--accent2); }
+
+  /* ─── BUTTONS ─── */
+  .btn-row { display:flex; gap:12px; justify-content:flex-end; margin-top:36px; }
+  .btn {
+    padding:13px 28px; border-radius:10px; font-size:14px; font-weight:600;
+    cursor:pointer; transition: all .2s; border:none;
+    letter-spacing:.02em;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg,var(--accent),#b8884a);
+    color:#0e0f13;
+  }
+  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(201,169,110,.3); }
+  .btn-secondary {
+    background:var(--card); border:1px solid var(--border); color:var(--text);
+  }
+  .btn-secondary:hover { border-color:var(--muted); }
+  .btn-ghost {
+    background:none; border:1px solid var(--border); color:var(--muted);
+  }
+  .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* ─── MF SUGGESTIONS ─── */
+  .mf-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .mf-table th {
+    text-align:left; padding:10px 14px; color:var(--muted);
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+  }
+  .mf-table td { padding:11px 14px; border-bottom:1px solid rgba(42,45,58,.5); }
+  .mf-table tr:last-child td { border-bottom:none; }
+  .mf-table tr:hover td { background:rgba(201,169,110,.04); }
+  .tag {
+    display:inline-block; padding:3px 10px; border-radius:20px;
+    font-size:11px; font-weight:600; letter-spacing:.03em;
+  }
+  .tag-green { background:rgba(76,175,130,.15); color:#4caf82; }
+  .tag-blue { background:rgba(107,163,214,.15); color:#6ba3d6; }
+  .tag-amber { background:rgba(201,169,110,.15); color:#c9a96e; }
+  .tag-red { background:rgba(224,123,107,.15); color:#e07b6b; }
+
+  /* ─── RESULTS ─── */
+  .result-grid {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:28px;
+  }
+  @media(max-width:640px) { .result-grid { grid-template-columns:1fr 1fr; } }
+  .kpi {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:18px 20px;
+  }
+  .kpi-label { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .kpi-value { font-family:'DM Serif Display',serif; font-size:26px; color:var(--highlight); }
+  .kpi-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  .goal-timeline { display:flex; flex-direction:column; gap:12px; }
+  .gt-row {
+    display:grid; grid-template-columns:1fr 100px 100px 110px;
+    gap:10px; align-items:center; padding:14px 18px;
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    font-size:13px;
+  }
+  .gt-row .gname { font-weight:600; color:var(--highlight); }
+  .gt-row .gyear { color:var(--muted); }
+  .gt-row .gamt { color:var(--accent); font-weight:600; }
+  .gt-row .gneed { color:var(--accent2); font-weight:600; font-size:12px; }
+
+  /* ─── DOWNLOAD ─── */
+  .dl-options {
+    display:flex; gap:16px; flex-wrap:wrap; margin-top:24px;
+  }
+  .dl-btn {
+    display:flex; align-items:center; gap:10px;
+    background:var(--card); border:1px solid var(--border);
+    border-radius:10px; padding:14px 22px; cursor:pointer;
+    transition: all .2s; color:var(--text); font-size:14px; font-weight:500;
+  }
+  .dl-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .dl-btn .icon { font-size:20px; }
+
+  /* ─── DIVIDER ─── */
+  .divider { border:none; border-top:1px solid var(--border); margin:28px 0; }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position:fixed; bottom:32px; right:32px; z-index:9999;
+    background:var(--accent); color:#0e0f13;
+    padding:12px 22px; border-radius:10px; font-weight:600; font-size:14px;
+    opacity:0; transform:translateY(10px); transition:all .3s; pointer-events:none;
+  }
+  #toast.show { opacity:1; transform:translateY(0); }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar {
+    height:3px; background:var(--border); border-radius:2px;
+    overflow:hidden; margin-bottom:32px;
+  }
+  .progress-fill {
+    height:100%;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    border-radius:2px; transition: width .4s ease;
+  }
+
+  /* ─── SECTION SPACER ─── */
+  .section { margin-bottom:28px; }
+
+  /* scroll */
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">W</div>
+    <div>
+      <div class="logo-text">WealthMap</div>
+      <div class="logo-sub">Financial Planning Suite</div>
+    </div>
+  </div>
+  <div class="step-indicator" id="stepDots"></div>
+</header>
+
+<main>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- ══════════════════ PAGE 1: PERSONAL INFO ══════════════════ -->
+  <div class="page active" id="p1">
+    <div class="page-header">
+      <div class="page-label">Step 1 of 7</div>
+      <h1 class="page-title">Tell us about yourself</h1>
+      <p class="page-desc">Basic personal and family details to personalise your financial plan.</p>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>👤</span> Personal Details</div>
+      <div class="grid2" style="gap:16px">
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="name" placeholder="Arjun Sharma">
+        </div>
+        <div class="field">
+          <label>Age</label>
+          <input type="number" id="age" placeholder="35" min="18" max="80">
+        </div>
+        <div class="field">
+          <label>Planned Retirement Age</label>
+          <input type="number" id="retireAge" placeholder="60" min="40" max="80">
+        </div>
+        <div class="field">
+          <label>City / Location</label>
+          <input type="text" id="city" placeholder="Mumbai, India">
+        </div>
+        <div class="field">
+          <label>Occupation</label>
+          <select id="occupation">
+            <option value="">Select...</option>
+            <option>Salaried (Private)</option>
+            <option>Salaried (Government/PSU)</option>
+            <option>Self-Employed / Business</option>
+            <option>Freelancer / Consultant</option>
+            <option>Professional (Doctor / CA / Lawyer)</option>
+            <option>Retired</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Annual Income (₹)</label>
+          <input type="number" id="income" placeholder="1500000">
+        </div>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>👨‍👩‍👧</span> Family & Dependents</div>
+      <div class="grid2" style="gap:16px">
+        <div class="field">
+          <label>Marital Status</label>
+          <select id="marital">
+            <option value="">Select...</option>
+            <option>Single</option>
+            <option>Married</option>
+            <option>Divorced / Separated</option>
+            <option>Widowed</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Spouse Age (if applicable)</label>
+          <input type="number" id="spouseAge" placeholder="32">
+        </div>
+        <div class="field">
+          <label>Number of Children</label>
+          <input type="number" id="children" placeholder="2" min="0">
+        </div>
+        <div class="field">
+          <label>Ages of Children (comma separated)</label>
+          <input type="text" id="childAges" placeholder="e.g. 5, 8">
+        </div>
+        <div class="field">
+          <label>Dependent Parents / In-Laws</label>
+          <select id="parentDep">
+            <option>None</option>
+            <option>1 parent</option>
+            <option>2 parents</option>
+            <option>3 parents / in-laws</option>
+            <option>4 parents / in-laws</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Number of Other Dependents</label>
+          <input type="number" id="otherDep" placeholder="0" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>💰</span> Monthly Cash Flow</div>
+      <div class="grid2" style="gap:16px">
+        <div class="field">
+          <label>Monthly Expenses (₹)</label>
+          <input type="number" id="expenses" placeholder="80000">
+        </div>
+        <div class="field">
+          <label>Monthly Savings / Investable Surplus (₹)</label>
+          <input type="number" id="savings" placeholder="40000">
+        </div>
+        <div class="field">
+          <label>Existing EMIs / Loan Obligations (₹/mo)</label>
+          <input type="number" id="emi" placeholder="20000">
+        </div>
+        <div class="field">
+          <label>Emergency Fund Available (₹)</label>
+          <input type="number" id="emergency" placeholder="300000">
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goTo(2)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ PAGE 2: RISK PROFILE ══════════════════ -->
+  <div class="page" id="p2">
+    <div class="page-header">
+      <div class="page-label">Step 2 of 7</div>
+      <h1 class="page-title">Risk Profile Assessment</h1>
+      <p class="page-desc">Answer honestly — this shapes your entire investment strategy.</p>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>🎯</span> Overall Risk Tolerance</div>
+      <div class="risk-options" id="riskCards">
+        <div class="risk-opt" onclick="selectRisk(this,'Conservative')">
+          <div class="icon">🛡️</div>
+          <div class="rlabel">Conservative</div>
+          <div class="rdesc">Capital preservation above all</div>
+        </div>
+        <div class="risk-opt" onclick="selectRisk(this,'Moderately Conservative')">
+          <div class="icon">⚖️</div>
+          <div class="rlabel">Mod. Conservative</div>
+          <div class="rdesc">Low risk, steady returns</div>
+        </div>
+        <div class="risk-opt" onclick="selectRisk(this,'Moderate')">
+          <div class="icon">📊</div>
+          <div class="rlabel">Moderate</div>
+          <div class="rdesc">Balanced growth & safety</div>
+        </div>
+        <div class="risk-opt" onclick="selectRisk(this,'Moderately Aggressive')">
+          <div class="icon">📈</div>
+          <div class="rlabel">Mod. Aggressive</div>
+          <div class="rdesc">Higher growth, some risk</div>
+        </div>
+        <div class="risk-opt" onclick="selectRisk(this,'Aggressive')">
+          <div class="icon">🚀</div>
+          <div class="rlabel">Aggressive</div>
+          <div class="rdesc">Maximum growth potential</div>
+        </div>
+      </div>
+      <input type="hidden" id="riskProfile" value="">
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>🧠</span> Behavioural Questions</div>
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <div class="field">
+          <label>If your portfolio dropped 25% in a market crash, you would:</label>
+          <select id="q1">
+            <option value="">Select your reaction...</option>
+            <option value="1">Panic and sell everything immediately</option>
+            <option value="2">Sell some to reduce losses</option>
+            <option value="3">Hold and wait for recovery</option>
+            <option value="4">Hold and invest a bit more</option>
+            <option value="5">Aggressively buy the dip — great opportunity!</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Your primary investment goal is:</label>
+          <select id="q2">
+            <option value="">Select...</option>
+            <option value="1">Capital protection — never lose money</option>
+            <option value="2">Regular income / dividends</option>
+            <option value="3">Moderate wealth creation over 5–10 years</option>
+            <option value="4">Significant wealth creation over 10+ years</option>
+            <option value="5">Aggressive wealth multiplication</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>How long can you keep money invested without needing it?</label>
+          <select id="q3">
+            <option value="">Select...</option>
+            <option value="1">Less than 1 year</option>
+            <option value="2">1–3 years</option>
+            <option value="3">3–5 years</option>
+            <option value="4">5–10 years</option>
+            <option value="5">10+ years</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>How stable is your income source?</label>
+          <select id="q4">
+            <option value="">Select...</option>
+            <option value="1">Very unstable / seasonal</option>
+            <option value="2">Somewhat variable</option>
+            <option value="3">Fairly stable salaried job</option>
+            <option value="4">Very stable with increments / bonuses</option>
+            <option value="5">Multiple income streams</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Your investment experience level:</label>
+          <select id="q5">
+            <option value="">Select...</option>
+            <option value="1">Beginner — I've only kept money in FDs / savings</option>
+            <option value="2">Some experience with MFs / PPF</option>
+            <option value="3">Comfortable with equity MFs</option>
+            <option value="4">Experienced — direct stocks, MFs, bonds</option>
+            <option value="5">Expert — derivatives, international funds, etc.</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(3)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ PAGE 3: ASSET ALLOCATION ══════════════════ -->
+  <div class="page" id="p3">
+    <div class="page-header">
+      <div class="page-label">Step 3 of 7</div>
+      <h1 class="page-title">Target Asset Allocation</h1>
+      <p class="page-desc">Set your desired allocation across asset classes. Total must equal 100%.</p>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>🎨</span> Allocation by Asset Class</div>
+      <div class="bar-chart" id="allocBar"></div>
+      <br>
+      <div id="allocRows"></div>
+      <div class="alloc-total">
+        <span>Total Allocation</span>
+        <span class="tv" id="allocTotal">0%</span>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>📊</span> Return Expectations by Asset Class</div>
+      <div class="grid2" style="gap:16px">
+        <div class="field">
+          <label>Expected Equity Return (%/yr)</label>
+          <div class="range-wrap">
+            <div class="range-row">
+              <input type="range" id="eqReturn" min="6" max="20" value="12" oninput="updRV('eqRV',this.value,'%')">
+              <span class="range-val" id="eqRV">12%</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Expected Debt Return (%/yr)</label>
+          <div class="range-wrap">
+            <div class="range-row">
+              <input type="range" id="debtReturn" min="4" max="10" value="7" oninput="updRV('debtRV',this.value,'%')">
+              <span class="range-val" id="debtRV">7%</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Expected Gold Return (%/yr)</label>
+          <div class="range-wrap">
+            <div class="range-row">
+              <input type="range" id="goldReturn" min="4" max="14" value="8" oninput="updRV('goldRV',this.value,'%')">
+              <span class="range-val" id="goldRV">8%</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Expected Real Estate Return (%/yr)</label>
+          <div class="range-wrap">
+            <div class="range-row">
+              <input type="range" id="reReturn" min="4" max="14" value="9" oninput="updRV('reRV',this.value,'%')">
+              <span class="range-val" id="reRV">9%</span>
+            </div>
+          </div>
+        </div>
+        <!-- INFLATION COUNTRY PANEL -->
+        <div class="field full" style="grid-column:1/-1;">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;">
+            <div style="font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">🌍 Inflation Assumption</div>
+            <div class="grid2" style="gap:16px;align-items:end;">
+              <div class="field">
+                <label>Country / Market You Plan to Settle In</label>
+                <select id="inflCountry" onchange="onCountryChange(this.value)">
+                  <option value="">— Select Country —</option>
+                  <optgroup label="South Asia">
+                    <option value="IN" selected>🇮🇳 India (avg ~6%)</option>
+                    <option value="PK">🇵🇰 Pakistan (avg ~20%)</option>
+                    <option value="BD">🇧🇩 Bangladesh (avg ~9%)</option>
+                    <option value="LK">🇱🇰 Sri Lanka (avg ~12%)</option>
+                    <option value="NP">🇳🇵 Nepal (avg ~7%)</option>
+                  </optgroup>
+                  <optgroup label="Southeast Asia">
+                    <option value="SG">🇸🇬 Singapore (avg ~3%)</option>
+                    <option value="MY">🇲🇾 Malaysia (avg ~3%)</option>
+                    <option value="TH">🇹🇭 Thailand (avg ~3%)</option>
+                    <option value="PH">🇵🇭 Philippines (avg ~5%)</option>
+                    <option value="ID">🇮🇩 Indonesia (avg ~4%)</option>
+                    <option value="VN">🇻🇳 Vietnam (avg ~4%)</option>
+                  </optgroup>
+                  <optgroup label="Middle East">
+                    <option value="AE">🇦🇪 UAE / Dubai (avg ~3%)</option>
+                    <option value="SA">🇸🇦 Saudi Arabia (avg ~3%)</option>
+                    <option value="QA">🇶🇦 Qatar (avg ~3%)</option>
+                    <option value="KW">🇰🇼 Kuwait (avg ~3%)</option>
+                    <option value="BH">🇧🇭 Bahrain (avg ~3%)</option>
+                  </optgroup>
+                  <optgroup label="Developed Markets">
+                    <option value="US">🇺🇸 USA (avg ~3.5%)</option>
+                    <option value="GB">🇬🇧 UK (avg ~3.5%)</option>
+                    <option value="AU">🇦🇺 Australia (avg ~3.5%)</option>
+                    <option value="CA">🇨🇦 Canada (avg ~3%)</option>
+                    <option value="DE">🇩🇪 Germany / EU (avg ~3%)</option>
+                    <option value="NZ">🇳🇿 New Zealand (avg ~3.5%)</option>
+                    <option value="JP">🇯🇵 Japan (avg ~2.5%)</option>
+                  </optgroup>
+                  <optgroup label="Africa">
+                    <option value="ZA">🇿🇦 South Africa (avg ~6%)</option>
+                    <option value="NG">🇳🇬 Nigeria (avg ~22%)</option>
+                    <option value="KE">🇰🇪 Kenya (avg ~8%)</option>
+                  </optgroup>
+                  <option value="XX">🌐 Custom / Other</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Assumed Annual Inflation Rate (%)</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <input type="range" id="inflation" min="1" max="25" value="6" step="0.5"
+                    oninput="document.getElementById('inflRV').textContent=parseFloat(this.value).toFixed(1)+'%';syncInflInput(this.value)">
+                  <span class="range-val" id="inflRV">6.0%</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+                  <input type="number" id="inflManual" min="1" max="30" step="0.5" value="6"
+                    style="width:90px;padding:8px 10px;font-size:14px;"
+                    oninput="syncInflSlider(this.value)" placeholder="6">
+                  <span style="font-size:13px;color:var(--muted)">% — or type your own rate</span>
+                </div>
+              </div>
+            </div>
+            <!-- Inflation context banner -->
+            <div id="inflBanner" style="margin-top:14px;padding:12px 14px;background:rgba(201,169,110,.08);border:1px solid rgba(201,169,110,.2);border-radius:8px;font-size:13px;color:var(--muted);line-height:1.6;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(4)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ PAGE 4: CURRENT HOLDINGS ══════════════════ -->
+  <div class="page" id="p4">
+    <div class="page-header">
+      <div class="page-label">Step 4 of 7</div>
+      <h1 class="page-title">Current Holdings & Net Worth</h1>
+      <p class="page-desc">List your existing investments and assets for a complete picture.</p>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>📂</span> Existing Investments</div>
+      <div id="holdingRows"></div>
+      <button class="add-row-btn" onclick="addHolding()">＋ Add Investment</button>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>🏠</span> Physical Assets</div>
+      <div class="grid2" style="gap:16px">
+        <div class="field">
+          <label>Primary Residence Value (₹)</label>
+          <input type="number" id="homeVal" placeholder="8500000">
+        </div>
+        <div class="field">
+          <label>Outstanding Home Loan (₹)</label>
+          <input type="number" id="homeLoan" placeholder="3500000">
+        </div>
+        <div class="field">
+          <label>Other Real Estate Value (₹)</label>
+          <input type="number" id="reVal" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Vehicle Value (₹)</label>
+          <input type="number" id="vehicleVal" placeholder="600000">
+        </div>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>💳</span> Liabilities</div>
+      <div class="grid2" style="gap:16px">
+        <div class="field">
+          <label>Personal Loan Outstanding (₹)</label>
+          <input type="number" id="personalLoan" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Car Loan Outstanding (₹)</label>
+          <input type="number" id="carLoan" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Education Loan Outstanding (₹)</label>
+          <input type="number" id="eduLoan" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Credit Card Dues (₹)</label>
+          <input type="number" id="ccDues" placeholder="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(5)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ PAGE 5: GOALS ══════════════════ -->
+  <div class="page" id="p5">
+    <div class="page-header">
+      <div class="page-label">Step 5 of 7</div>
+      <h1 class="page-title">Financial Goals</h1>
+      <p class="page-desc">Define your life goals with target amounts and timelines.</p>
+    </div>
+
+    <div id="goalsList" style="display:flex; flex-direction:column; gap:14px;"></div>
+    <br>
+    <button class="add-goal-btn" onclick="addGoal()">＋ Add a Goal</button>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(4)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(6)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ PAGE 6: MF SUGGESTIONS ══════════════════ -->
+  <div class="page" id="p6">
+    <div class="page-header">
+      <div class="page-label">Step 6 of 7</div>
+      <h1 class="page-title">Mutual Fund Category Recommendations</h1>
+      <p class="page-desc">Based on your risk profile and return expectations, here are suitable MF categories.</p>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>🔍</span> Recommended MF Categories for Your Profile</div>
+      <div style="overflow-x:auto;">
+        <table class="mf-table" id="mfTable">
+          <thead>
+            <tr>
+              <th>MF Category</th>
+              <th>Type</th>
+              <th>Expected Returns</th>
+              <th>Risk Level</th>
+              <th>Horizon</th>
+              <th>Suitable For</th>
+            </tr>
+          </thead>
+          <tbody id="mfBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>💡</span> Suggested Monthly SIP Plan</div>
+      <div class="grid2" style="gap:16px" id="sipGrid"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="goTo(5)">← Back</button>
+      <button class="btn btn-primary" onclick="goTo(7)">View Full Plan →</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════ PAGE 7: RESULTS ══════════════════ -->
+  <div class="page" id="p7">
+    <div class="page-header">
+      <div class="page-label">Step 7 of 7 — Your Financial Blueprint</div>
+      <h1 class="page-title">Your Personalised Financial Plan</h1>
+      <p class="page-desc">A comprehensive snapshot of your financial position and roadmap ahead.</p>
+    </div>
+
+    <div class="result-grid" id="kpiGrid"></div>
+
+    <div class="section card">
+      <div class="card-title"><span>📅</span> Goal-Based Corpus Requirements</div>
+      <div class="goal-timeline" id="goalTimeline"></div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>🗺️</span> Recommended Investment Roadmap</div>
+      <div id="roadmap" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+
+    <div class="section card">
+      <div class="card-title"><span>⚠️</span> Key Observations & Action Points</div>
+      <div id="observations" style="display:flex; flex-direction:column; gap:10px;"></div>
+    </div>
+
+    <hr class="divider">
+    <div class="card-title" style="margin-bottom:16px;"><span>📥</span> Download Your Plan</div>
+    <div class="dl-options">
+      <button class="dl-btn" onclick="downloadPDF()"><span class="icon">📄</span> Download PDF</button>
+      <button class="dl-btn" onclick="downloadExcel()"><span class="icon">📊</span> Download Excel</button>
+      <button class="dl-btn" onclick="downloadCSV()"><span class="icon">📋</span> Download CSV</button>
+    </div>
+
+    <div class="btn-row" style="margin-top:36px;">
+      <button class="btn btn-ghost" onclick="goTo(6)">← Back</button>
+      <button class="btn btn-secondary" onclick="goTo(1)">Start Over</button>
+    </div>
+  </div>
+</main>
+
+<div id="toast">✓ Saved!</div>
+
+<script>
+/* ─────────────────────────────────────
+   STATE & CONFIG
+───────────────────────────────────── */
+const TOTAL_PAGES = 7;
+let currentPage = 1;
+
+const ASSET_CLASSES = [
+  { key:'equity',   label:'Equity',          color:'#c9a96e' },
+  { key:'debt',     label:'Debt / Bonds',    color:'#6ba3d6' },
+  { key:'gold',     label:'Gold',            color:'#f0c060' },
+  { key:'realestate',label:'Real Estate',    color:'#7eb8a4' },
+  { key:'intl',     label:'Intl. Equity',    color:'#b07ec8' },
+  { key:'cash',     label:'Cash / Liquid',   color:'#7a7d8a' },
+];
+
+let allocations = { equity:50, debt:25, gold:10, realestate:5, intl:5, cash:5 };
+let holdings = [];
+let goals = [];
+
+/* ─────────────────────────────────────
+   NAVIGATION
+───────────────────────────────────── */
+function goTo(n) {
+  if (n === 6) buildMFSuggestions();
+  if (n === 7) buildResults();
+  document.getElementById('p'+currentPage).classList.remove('active');
+  currentPage = n;
+  document.getElementById('p'+n).classList.add('active');
+  updateDots();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function updateDots() {
+  const c = document.getElementById('stepDots');
+  c.innerHTML = '';
+  for(let i=1; i<=TOTAL_PAGES; i++) {
+    const d = document.createElement('div');
+    d.className = 'step-dot' + (i===currentPage?' active':i<currentPage?' done':'');
+    d.onclick = () => { if(i < currentPage) goTo(i); };
+    c.appendChild(d);
+  }
+  document.getElementById('progressFill').style.width = ((currentPage-1)/(TOTAL_PAGES-1)*100)+'%';
+}
+
+/* ─────────────────────────────────────
+   HELPERS
+───────────────────────────────────── */
+function updRV(id, v, suffix='') {
+  document.getElementById(id).textContent = v+suffix;
+}
+
+function fmtINR(n) {
+  if(!n || isNaN(n)) return '₹0';
+  n = Math.round(n);
+  if(n >= 10000000) return '₹'+(n/10000000).toFixed(2)+' Cr';
+  if(n >= 100000)   return '₹'+(n/100000).toFixed(2)+' L';
+  return '₹'+n.toLocaleString('en-IN');
+}
+
+function gv(id) {
+  const el = document.getElementById(id);
+  if(!el) return '';
+  return el.value || '';
+}
+
+function fv(id) { return parseFloat(gv(id)) || 0; }
+
+/* ─────────────────────────────────────
+   ASSET ALLOCATION
+───────────────────────────────────── */
+function buildAllocRows() {
+  const container = document.getElementById('allocRows');
+  container.innerHTML = '';
+  ASSET_CLASSES.forEach(ac => {
+    const row = document.createElement('div');
+    row.className = 'alloc-row';
+    row.innerHTML = `
+      <div class="alloc-name">
+        <div class="alloc-dot" style="background:${ac.color}"></div>
+        ${ac.label}
+      </div>
+      <div>
+        <input type="range" min="0" max="100" value="${allocations[ac.key]}"
+          id="alloc_${ac.key}" oninput="updateAlloc('${ac.key}',this.value)">
+      </div>
+      <div class="range-val" id="av_${ac.key}">${allocations[ac.key]}%</div>
+    `;
+    container.appendChild(row);
+  });
+  updateAllocBar();
+}
+
+function updateAlloc(key, val) {
+  allocations[key] = parseInt(val);
+  document.getElementById('av_'+key).textContent = val+'%';
+  updateAllocBar();
+}
+
+function updateAllocBar() {
+  const total = Object.values(allocations).reduce((a,b)=>a+b,0);
+  const bar = document.getElementById('allocBar');
+  bar.innerHTML = '';
+  ASSET_CLASSES.forEach(ac => {
+    const pct = allocations[ac.key];
+    if(pct > 0) {
+      const seg = document.createElement('div');
+      seg.className = 'bar-seg';
+      seg.style.width = (pct/total*100)+'%';
+      seg.style.background = ac.color;
+      seg.title = `${ac.label}: ${pct}%`;
+      bar.appendChild(seg);
+    }
+  });
+  const tv = document.getElementById('allocTotal');
+  tv.textContent = total+'%';
+  tv.style.color = total === 100 ? 'var(--green)' : total > 100 ? 'var(--red)' : 'var(--accent)';
+}
+
+/* ─────────────────────────────────────
+   RISK SELECTION
+───────────────────────────────────── */
+function selectRisk(el, val) {
+  document.querySelectorAll('.risk-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('riskProfile').value = val;
+}
+
+/* ─────────────────────────────────────
+   HOLDINGS
+───────────────────────────────────── */
+function addHolding(data={}) {
+  const id = Date.now();
+  holdings.push({id, type:data.type||'', name:data.name||'', value:data.value||''});
+  renderHoldings();
+}
+
+function renderHoldings() {
+  const c = document.getElementById('holdingRows');
+  c.innerHTML = '';
+  if(holdings.length===0) { addHolding(); return; }
+  const header = document.createElement('div');
+  header.className = 'holding-row';
+  header.style.marginBottom = '4px';
+  header.innerHTML = `
+    <label>Asset Type</label><label>Name / Fund / Details</label>
+    <label>Current Value (₹)</label><div></div>`;
+  c.appendChild(header);
+  holdings.forEach((h,i) => {
+    const row = document.createElement('div');
+    row.className = 'holding-row';
+    row.innerHTML = `
+      <select onchange="holdings[${i}].type=this.value">
+        <option value="">Type...</option>
+        <option ${h.type==='Equity MF'?'selected':''}>Equity MF</option>
+        <option ${h.type==='Debt MF'?'selected':''}>Debt MF</option>
+        <option ${h.type==='Hybrid MF'?'selected':''}>Hybrid MF</option>
+        <option ${h.type==='Direct Equity'?'selected':''}>Direct Equity</option>
+        <option ${h.type==='FD / RD'?'selected':''}>FD / RD</option>
+        <option ${h.type==='PPF / EPF'?'selected':''}>PPF / EPF</option>
+        <option ${h.type==='NPS'?'selected':''}>NPS</option>
+        <option ${h.type==='Gold'?'selected':''}>Gold</option>
+        <option ${h.type==='Real Estate'?'selected':''}>Real Estate</option>
+        <option ${h.type==='Insurance'?'selected':''}>Insurance / ULIP</option>
+        <option ${h.type==='Crypto'?'selected':''}>Crypto</option>
+        <option ${h.type==='Other'?'selected':''}>Other</option>
+      </select>
+      <input type="text" value="${h.name}" placeholder="e.g. Mirae Asset Large Cap" onchange="holdings[${i}].name=this.value">
+      <input type="number" value="${h.value}" placeholder="500000" onchange="holdings[${i}].value=parseFloat(this.value)||0">
+      <button class="remove-btn" onclick="removeHolding(${i})">✕</button>
+    `;
+    c.appendChild(row);
+  });
+}
+
+function removeHolding(i) {
+  holdings.splice(i,1);
+  renderHoldings();
+}
+
+/* ─────────────────────────────────────
+   GOALS — structured categories
+───────────────────────────────────── */
+const GOAL_CATALOG = [
+  {
+    group: '🏠 Housing & Real Estate',
+    goals: [
+      { type: 'Home Purchase – Primary Residence',   icon:'🏡', hint:'Down payment + registration costs',   defaultYrs:5,  suggestLakh:50 },
+      { type: 'Home Purchase – Second Home / Plot',  icon:'🏘️', hint:'Investment / vacation property',       defaultYrs:8,  suggestLakh:30 },
+      { type: 'Home Renovation / Interior',          icon:'🔨', hint:'Modular kitchen, flooring, painting',  defaultYrs:3,  suggestLakh:8  },
+      { type: 'Home Loan Prepayment',                icon:'💳', hint:'Part-pay or close outstanding loan',   defaultYrs:4,  suggestLakh:10 },
+    ]
+  },
+  {
+    group: '👨‍👩‍👧 Children & Family',
+    goals: [
+      { type: "Child's Higher Education – India",      icon:'🎓', hint:'Engineering / medical / MBA in India', defaultYrs:10, suggestLakh:30 },
+      { type: "Child's Higher Education – Abroad",     icon:'✈️', hint:'MS / MBA overseas — USA, UK, Canada', defaultYrs:12, suggestLakh:100 },
+      { type: "Child's School Fees Corpus",            icon:'📚', hint:'K-12 private school fund',            defaultYrs:5,  suggestLakh:15 },
+      { type: "Child's Marriage",                      icon:'💍', hint:'Wedding + jewellery + events',        defaultYrs:15, suggestLakh:40 },
+      { type: "Child's First Vehicle / Gift",          icon:'🎁', hint:'Car / bike as a milestone gift',      defaultYrs:8,  suggestLakh:8  },
+    ]
+  },
+  {
+    group: '🌅 Retirement & Financial Independence',
+    goals: [
+      { type: 'Retirement Corpus',                    icon:'🌅', hint:'Post-retirement monthly income fund',  defaultYrs:20, suggestLakh:500 },
+      { type: 'Early Retirement / FIRE',              icon:'🔥', hint:'Financial Independence before 50',    defaultYrs:15, suggestLakh:300 },
+      { type: 'Senior Care / Parent Support Fund',    icon:'👴', hint:'Medical + living costs for parents',  defaultYrs:5,  suggestLakh:20 },
+      { type: 'Annuity / Pension Supplement',         icon:'📆', hint:'Top-up for pension shortfall',        defaultYrs:20, suggestLakh:50 },
+    ]
+  },
+  {
+    group: '🚗 Vehicles & Lifestyle',
+    goals: [
+      { type: 'Car Purchase',                         icon:'🚗', hint:'New / pre-owned car',                 defaultYrs:3,  suggestLakh:12 },
+      { type: 'EV / Electric Vehicle Upgrade',        icon:'⚡', hint:'Switch to electric vehicle',          defaultYrs:4,  suggestLakh:20 },
+      { type: 'Luxury / Exotic Vehicle',              icon:'🏎️', hint:'Premium car aspiration fund',         defaultYrs:7,  suggestLakh:60 },
+      { type: 'Two-Wheeler Purchase',                 icon:'🏍️', hint:'Bike / scooter purchase',             defaultYrs:1,  suggestLakh:2  },
+    ]
+  },
+  {
+    group: '✈️ Travel & Experiences',
+    goals: [
+      { type: 'International Holiday – Europe / US', icon:'🗺️', hint:'Europe / USA trip fund',             defaultYrs:2,  suggestLakh:5  },
+      { type: 'International Holiday – Southeast Asia',icon:'🌴',hint:'Thailand, Bali, Japan trip',         defaultYrs:1,  suggestLakh:2  },
+      { type: 'Pilgrimage / Religious Travel',        icon:'🕍', hint:'Char Dham, Hajj, Jerusalem etc.',    defaultYrs:3,  suggestLakh:3  },
+      { type: 'Bucket List Trip',                     icon:'🌏', hint:'World tour / cruise / Maldives',     defaultYrs:5,  suggestLakh:10 },
+      { type: 'Annual Family Vacation Fund',          icon:'🏖️', hint:'Recurring yearly holiday corpus',   defaultYrs:1,  suggestLakh:1  },
+    ]
+  },
+  {
+    group: '💼 Business & Career',
+    goals: [
+      { type: 'Start a Business / Startup',           icon:'🚀', hint:'Working capital + setup costs',      defaultYrs:3,  suggestLakh:20 },
+      { type: 'Business Expansion Capital',           icon:'📈', hint:'Scale existing venture',             defaultYrs:4,  suggestLakh:50 },
+      { type: 'Franchise Investment',                 icon:'🏪', hint:'Franchise fee + setup',              defaultYrs:3,  suggestLakh:30 },
+      { type: 'Professional Certification / MBA',     icon:'🎓', hint:'Executive MBA or CFA/CPA fees',      defaultYrs:2,  suggestLakh:10 },
+      { type: 'Sabbatical / Career Break Fund',       icon:'🧘', hint:'6–12 months living cost buffer',     defaultYrs:5,  suggestLakh:8  },
+    ]
+  },
+  {
+    group: '🏥 Health & Protection',
+    goals: [
+      { type: 'Medical Emergency Reserve',            icon:'🏥', hint:'Surgery / critical illness buffer',  defaultYrs:2,  suggestLakh:10 },
+      { type: 'Critical Illness Treatment Fund',      icon:'💊', hint:'Cancer / cardiac treatment costs',   defaultYrs:3,  suggestLakh:25 },
+      { type: 'Dental / Cosmetic Procedure',          icon:'🦷', hint:'Implants, Lasik, cosmetic surgery',  defaultYrs:2,  suggestLakh:3  },
+    ]
+  },
+  {
+    group: '🎯 Wealth & Investments',
+    goals: [
+      { type: 'Emergency Fund – 6 Months',            icon:'🛡️', hint:'Liquid corpus = 6× monthly expense', defaultYrs:1,  suggestLakh:5  },
+      { type: 'Lump-sum Investment Corpus',           icon:'💰', hint:'Equity / real estate lump sum',      defaultYrs:5,  suggestLakh:50 },
+      { type: 'Wealth Creation (10+ yrs)',            icon:'📊', hint:'Long-term compounding goal',         defaultYrs:15, suggestLakh:200 },
+      { type: 'Gold Accumulation',                    icon:'🥇', hint:'Physical gold or SGB target',       defaultYrs:5,  suggestLakh:10 },
+      { type: 'Land / Agricultural Investment',       icon:'🌾', hint:'Rural land or farmhouse',           defaultYrs:8,  suggestLakh:40 },
+    ]
+  },
+  {
+    group: '🤝 Giving & Legacy',
+    goals: [
+      { type: 'Charity / Donation Corpus',            icon:'❤️', hint:'NGO support / philanthropy goal',   defaultYrs:5,  suggestLakh:5  },
+      { type: 'Estate / Inheritance Planning',        icon:'📜', hint:'Wealth transfer to heirs',          defaultYrs:20, suggestLakh:200 },
+    ]
+  },
+  {
+    group: '🌍 Migration & NRI Goals',
+    goals: [
+      { type: 'Overseas Relocation Fund',             icon:'🌍', hint:'Visa + moving + settlement costs',  defaultYrs:3,  suggestLakh:15 },
+      { type: 'NRI Property in India',                icon:'🏠', hint:'Hometown property purchase',        defaultYrs:7,  suggestLakh:60 },
+      { type: 'Return-to-India Corpus',               icon:'🇮🇳', hint:'Buffer for repatriation + setup',  defaultYrs:10, suggestLakh:50 },
+    ]
+  },
+  { group: '✏️ Other', goals: [
+    { type: 'Custom Goal', icon:'⭐', hint:'Define your own specific goal', defaultYrs:5, suggestLakh:10 }
+  ]}
+];
+
+// Flat list for lookup
+const GOAL_FLAT = GOAL_CATALOG.flatMap(g => g.goals);
+
+function buildGoalTypeOptions(selectedType) {
+  return GOAL_CATALOG.map(grp => `
+    <optgroup label="${grp.group}">
+      ${grp.goals.map(g => `<option value="${g.type}" ${selectedType===g.type?'selected':''}>${g.icon} ${g.type}</option>`).join('')}
+    </optgroup>`).join('');
+}
+
+function onGoalTypeChange(idx, val) {
+  goals[idx].type = val;
+  const meta = GOAL_FLAT.find(g => g.type === val);
+  if(meta) {
+    if(!goals[idx].name || GOAL_FLAT.some(g=>g.type===goals[idx].name)) goals[idx].name = val;
+    if(!goals[idx].amount) goals[idx].amount = meta.suggestLakh * 100000;
+    if(!goals[idx].year)   goals[idx].year = new Date().getFullYear() + meta.defaultYrs;
+    if(!goals[idx].hint)   goals[idx].hint = meta.hint;
+  }
+  renderGoals();
+}
+
+function addGoal() {
+  const id = Date.now();
+  goals.push({id, type:'', name:'', amount:'', year:'', priority:'High', hint:'', notes:''});
+  renderGoals();
+}
+
+function removeGoal(id) {
+  goals = goals.filter(g=>g.id!==id);
+  renderGoals();
+}
+
+function renderGoals() {
+  const c = document.getElementById('goalsList');
+  c.innerHTML = '';
+  if(goals.length===0) {
+    c.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px;">No goals added yet. Click below to add your first goal.</p>';
+    return;
+  }
+  const currentYear = new Date().getFullYear();
+  goals.forEach((g,i) => {
+    const meta = GOAL_FLAT.find(gm=>gm.type===g.type);
+    const icon = meta ? meta.icon : '🎯';
+    const hintText = meta ? meta.hint : '';
+    const card = document.createElement('div');
+    card.className = 'goal-card';
+    const priorityColors = {Critical:'var(--red)',High:'var(--accent)',Medium:'var(--accent2)','Nice to Have':'var(--muted)'};
+    const pc = priorityColors[g.priority]||'var(--muted)';
+    card.innerHTML = `
+      <button class="goal-remove" onclick="removeGoal(${g.id})">✕</button>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+        <span style="font-size:28px;">${icon}</span>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--highlight);">${g.name||g.type||'New Goal'}</div>
+          ${hintText?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${hintText}</div>`:''}
+        </div>
+        <div style="margin-left:auto;background:rgba(255,255,255,.04);border:1px solid ${pc};border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;color:${pc};">${g.priority||'High'}</div>
+      </div>
+      <div class="grid2" style="gap:14px;">
+        <div class="field full">
+          <label>Goal Category</label>
+          <select onchange="onGoalTypeChange(${i},this.value)">
+            <option value="">— Choose a goal type —</option>
+            ${buildGoalTypeOptions(g.type)}
+          </select>
+        </div>
+        <div class="field">
+          <label>Custom Label</label>
+          <input type="text" value="${g.name||''}" placeholder="e.g. Ananya's MBA abroad"
+            onchange="goals[${i}]&&(goals[${i}].name=this.value)">
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select onchange="goals[${i}]&&(goals[${i}].priority=this.value);renderGoals()">
+            <option ${g.priority==='Critical'?'selected':''}>Critical</option>
+            <option ${g.priority==='High'||!g.priority?'selected':''}>High</option>
+            <option ${g.priority==='Medium'?'selected':''}>Medium</option>
+            <option ${g.priority==='Nice to Have'?'selected':''}>Nice to Have</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Target Amount (in today's ₹)</label>
+          <input type="number" value="${g.amount||''}" placeholder="e.g. 2000000"
+            onchange="goals[${i}]&&(goals[${i}].amount=parseFloat(this.value)||0)">
+          ${meta?`<div class="hint">Suggested: ~₹${meta.suggestLakh}L (today's cost)</div>`:''}
+        </div>
+        <div class="field">
+          <label>Target Year</label>
+          <input type="number" value="${g.year||''}" placeholder="${currentYear+5}"
+            min="${currentYear+1}" max="${currentYear+45}"
+            onchange="goals[${i}]&&(goals[${i}].year=parseInt(this.value)||0)">
+          ${g.year?`<div class="hint">${Math.max(0,g.year-currentYear)} years from now</div>`:''}
+        </div>
+        <div class="field full">
+          <label>Notes / Remarks</label>
+          <input type="text" value="${g.notes||''}" placeholder="Any details, assumptions or remarks..."
+            onchange="goals[${i}]&&(goals[${i}].notes=this.value)">
+        </div>
+      </div>`;
+    c.appendChild(card);
+  });
+}
+
+/* ─────────────────────────────────────
+   MF SUGGESTIONS
+───────────────────────────────────── */
+const MF_DATA = [
+  {cat:'Large Cap Fund',type:'Equity',returns:'10–13%',risk:'Moderate',horizon:'5+ yrs',for:'Core equity holding',profiles:['Moderate','Moderately Aggressive','Aggressive']},
+  {cat:'Flexi Cap Fund',type:'Equity',returns:'11–15%',risk:'Moderate–High',horizon:'5+ yrs',for:'Diversified equity',profiles:['Moderate','Moderately Aggressive','Aggressive']},
+  {cat:'Mid Cap Fund',type:'Equity',returns:'13–17%',risk:'High',horizon:'7+ yrs',for:'Higher growth',profiles:['Moderately Aggressive','Aggressive']},
+  {cat:'Small Cap Fund',type:'Equity',returns:'15–20%',risk:'Very High',horizon:'10+ yrs',for:'Aggressive wealth creation',profiles:['Aggressive']},
+  {cat:'ELSS (Tax Saver)',type:'Equity',returns:'10–15%',risk:'Moderate–High',horizon:'3+ yrs (lock-in)',for:'Tax saving + wealth',profiles:['Moderate','Moderately Aggressive','Aggressive']},
+  {cat:'Index Fund (Nifty 50)',type:'Passive Equity',returns:'10–12%',risk:'Moderate',horizon:'5+ yrs',for:'Low-cost market returns',profiles:['Conservative','Moderately Conservative','Moderate','Moderately Aggressive','Aggressive']},
+  {cat:'Balanced Advantage / DAA',type:'Hybrid',returns:'9–13%',risk:'Moderate',horizon:'3–5 yrs',for:'Automatic rebalancing',profiles:['Moderately Conservative','Moderate','Moderately Aggressive']},
+  {cat:'Aggressive Hybrid Fund',type:'Hybrid',returns:'10–13%',risk:'Moderate–High',horizon:'4+ yrs',for:'Equity-heavy hybrid',profiles:['Moderate','Moderately Aggressive']},
+  {cat:'Conservative Hybrid',type:'Hybrid',returns:'7–10%',risk:'Low–Moderate',horizon:'2+ yrs',for:'Capital + small growth',profiles:['Conservative','Moderately Conservative']},
+  {cat:'Corporate Bond Fund',type:'Debt',returns:'6–8%',risk:'Low–Moderate',horizon:'2–4 yrs',for:'Stable income',profiles:['Conservative','Moderately Conservative','Moderate']},
+  {cat:'Short Duration Debt',type:'Debt',returns:'5–7%',risk:'Low',horizon:'1–3 yrs',for:'Parking surplus / goals',profiles:['Conservative','Moderately Conservative','Moderate']},
+  {cat:'Gilt Fund',type:'Debt',returns:'6–9%',risk:'Moderate',horizon:'3–5 yrs',for:'Rate cycle play',profiles:['Moderately Conservative','Moderate']},
+  {cat:'Liquid Fund',type:'Debt',returns:'4–6%',risk:'Very Low',horizon:'< 1 yr',for:'Emergency fund / parking',profiles:['Conservative','Moderately Conservative','Moderate','Moderately Aggressive','Aggressive']},
+  {cat:'Gold ETF / Sovereign Gold Bond',type:'Commodity',returns:'7–10%',risk:'Moderate',horizon:'5+ yrs',for:'Inflation hedge',profiles:['Conservative','Moderately Conservative','Moderate','Moderately Aggressive','Aggressive']},
+  {cat:'International / US Index Fund',type:'International Equity',returns:'10–14%',risk:'Moderate–High',horizon:'5+ yrs',for:'Geographic diversification',profiles:['Moderate','Moderately Aggressive','Aggressive']},
+];
+
+const RISK_TAG = {
+  'Very Low':'tag-blue','Low':'tag-green','Low–Moderate':'tag-green',
+  'Moderate':'tag-amber','Moderate–High':'tag-amber',
+  'High':'tag-red','Very High':'tag-red'
+};
+
+function buildMFSuggestions() {
+  const profile = gv('riskProfile') || 'Moderate';
+  const filtered = MF_DATA.filter(m => m.profiles.includes(profile));
+  const tbody = document.getElementById('mfBody');
+  tbody.innerHTML = '';
+  filtered.forEach(m => {
+    const riskClass = RISK_TAG[m.risk] || 'tag-amber';
+    tbody.innerHTML += `<tr>
+      <td style="font-weight:600;color:var(--highlight)">${m.cat}</td>
+      <td><span class="tag tag-blue">${m.type}</span></td>
+      <td style="color:var(--accent2);font-weight:600">${m.returns}</td>
+      <td><span class="tag ${riskClass}">${m.risk}</span></td>
+      <td style="color:var(--muted)">${m.horizon}</td>
+      <td style="color:var(--muted);font-size:12px">${m.for}</td>
+    </tr>`;
+  });
+
+  // SIP plan
+  const monthly = fv('savings');
+  const sipGrid = document.getElementById('sipGrid');
+  sipGrid.innerHTML = '';
+  const sipPlan = getSIPPlan(profile, monthly);
+  sipPlan.forEach(s => {
+    sipGrid.innerHTML += `
+      <div class="field" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <label>${s.cat}</label>
+        <div style="font-size:18px;font-weight:600;color:var(--accent);margin-top:6px;">${fmtINR(s.amount)}<span style="font-size:12px;color:var(--muted)">/mo</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">${s.pct}% of surplus</div>
+      </div>`;
+  });
+}
+
+function getSIPPlan(profile, monthly) {
+  const plans = {
+    'Conservative':          [{cat:'Liquid Fund',pct:30},{cat:'Short Duration Debt',pct:25},{cat:'Conservative Hybrid',pct:20},{cat:'Index Fund (Nifty 50)',pct:15},{cat:'Gold ETF / SGB',pct:10}],
+    'Moderately Conservative':[{cat:'Short Duration Debt',pct:25},{cat:'Balanced Advantage',pct:25},{cat:'Index Fund (Nifty 50)',pct:25},{cat:'Gold ETF / SGB',pct:15},{cat:'Liquid Fund',pct:10}],
+    'Moderate':              [{cat:'Large Cap Fund',pct:25},{cat:'Flexi Cap Fund',pct:20},{cat:'Balanced Advantage',pct:20},{cat:'Corporate Bond Fund',pct:20},{cat:'Gold ETF / SGB',pct:15}],
+    'Moderately Aggressive': [{cat:'Flexi Cap Fund',pct:30},{cat:'Mid Cap Fund',pct:20},{cat:'Large Cap Fund',pct:20},{cat:'International Fund',pct:15},{cat:'Gold ETF / SGB',pct:15}],
+    'Aggressive':            [{cat:'Small Cap Fund',pct:25},{cat:'Mid Cap Fund',pct:25},{cat:'Flexi Cap Fund',pct:20},{cat:'International Fund',pct:20},{cat:'Gold ETF / SGB',pct:10}],
+  };
+  const p = plans[profile] || plans['Moderate'];
+  return p.map(s => ({...s, amount: Math.round(monthly * s.pct/100 / 500)*500 || Math.round(monthly * s.pct/100)}));
+}
+
+/* ─────────────────────────────────────
+   RESULTS
+───────────────────────────────────── */
+function buildResults() {
+  const age = fv('age');
+  const retireAge = fv('retireAge') || 60;
+  const income = fv('income');
+  const savings = fv('savings') * 12;
+  const inflation = fv('inflation') || 6;
+  const currentYear = new Date().getFullYear();
+
+  // Net worth
+  const investAmt = holdings.reduce((s,h)=>s+(parseFloat(h.value)||0),0);
+  const physAssets = fv('homeVal') + fv('vehicleVal') + fv('reVal');
+  const liabilities = fv('homeLoan') + fv('personalLoan') + fv('carLoan') + fv('eduLoan') + fv('ccDues');
+  const netWorth = investAmt + physAssets - liabilities;
+
+  // Blended expected return
+  const eqR = fv('eqReturn')||12, debtR = fv('debtReturn')||7, goldR = fv('goldReturn')||8, reR = fv('reReturn')||9;
+  const total = Object.values(allocations).reduce((a,b)=>a+b,0)||100;
+  const blended = ((allocations.equity||0)*eqR + (allocations.debt||0)*debtR +
+    (allocations.gold||0)*goldR + (allocations.realestate||0)*reR +
+    (allocations.intl||0)*eqR + (allocations.cash||0)*4)/total;
+
+  // Retirement corpus
+  const monthlyExpenses = fv('expenses');
+  const yearsToRetire = Math.max(0, retireAge - age);
+  const inflatedExpenses = monthlyExpenses * Math.pow(1+inflation/100, yearsToRetire);
+  const retirementCorpus = inflatedExpenses * 12 * 25; // 4% rule
+
+  // Savings rate
+  const savingsRate = income > 0 ? (fv('savings')*12/income*100).toFixed(1) : 0;
+
+  const kpis = [
+    {label:'Net Worth', value: fmtINR(netWorth), sub:'Assets minus liabilities'},
+    {label:'Investment Portfolio', value: fmtINR(investAmt), sub:'Existing holdings'},
+    {label:'Blended Expected Return', value: blended.toFixed(1)+'%', sub:'Based on your allocation'},
+    {label:'Years to Retirement', value: yearsToRetire+' yrs', sub:`Retiring at age ${retireAge}`},
+    {label:'Retirement Corpus Needed', value: fmtINR(retirementCorpus), sub:'Inflation-adjusted estimate'},
+    {label:'Annual Savings Rate', value: savingsRate+'%', sub:'Of gross annual income'},
+  ];
+
+  document.getElementById('kpiGrid').innerHTML = kpis.map(k=>`
+    <div class="kpi">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // Goal timeline
+  const gtc = document.getElementById('goalTimeline');
+  gtc.innerHTML = '';
+  if(goals.length === 0) {
+    gtc.innerHTML = '<p style="color:var(--muted)">No goals added. Go back to Step 5 to add goals.</p>';
+  } else {
+    goals.sort((a,b)=>a.year-b.year).forEach(g => {
+      const yrs = Math.max(0, (g.year||currentYear+5) - currentYear);
+      const inflated = (g.amount||0) * Math.pow(1+inflation/100, yrs);
+      const monthlyNeeded = yrs > 0 ? calcSIP(inflated, blended/100/12, yrs*12) : 0;
+      const priorityColor = {Critical:'var(--red)',High:'var(--accent)',Medium:'var(--accent2)','Nice to Have':'var(--muted)'}[g.priority]||'var(--muted)';
+      gtc.innerHTML += `<div class="gt-row">
+        <div>
+          <div class="gname">${g.name||g.type||'Goal'}</div>
+          <div style="font-size:11px;color:${priorityColor};margin-top:3px;font-weight:600;">${g.priority} Priority</div>
+        </div>
+        <div class="gyear">${g.year||'?'} (${yrs} yrs)</div>
+        <div class="gamt">${fmtINR(g.amount)}</div>
+        <div class="gneed">SIP: ${fmtINR(monthlyNeeded)}/mo</div>
+      </div>`;
+    });
+  }
+
+  // Roadmap
+  const roadmap = document.getElementById('roadmap');
+  const riskProfile = gv('riskProfile') || 'Moderate';
+  const roadmapItems = [
+    `<strong>Emergency Fund:</strong> Maintain ${fmtINR(monthlyExpenses*6)} (6 months expenses) in a Liquid Fund or High-Yield Savings Account.`,
+    `<strong>Life Insurance:</strong> Ensure term cover of at least ${fmtINR(income * 15)} (~15× annual income) to protect dependents.`,
+    `<strong>Health Insurance:</strong> Family floater of ₹10–20L recommended given your family size.`,
+    `<strong>Monthly SIP:</strong> Invest ${fmtINR(fv('savings'))} monthly as per the SIP plan suggested in Step 6 (${riskProfile} profile).`,
+    `<strong>Asset Rebalancing:</strong> Review and rebalance portfolio every 12 months or when allocation drifts by >5%.`,
+    `<strong>Tax Planning:</strong> Maximise ELSS (₹1.5L u/s 80C), NPS (₹50K u/s 80CCD), health insurance premium (u/s 80D).`,
+    `<strong>Step-Up SIP:</strong> Increase SIP amount by 10% every year in line with income growth.`,
+  ];
+  roadmap.innerHTML = roadmapItems.map(r=>`
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px;line-height:1.6;">
+      <span style="color:var(--accent);font-size:16px;flex-shrink:0;margin-top:1px;">→</span>
+      <span>${r}</span>
+    </div>`).join('');
+
+  // Observations
+  const obs = document.getElementById('observations');
+  const obsItems = [];
+  if(savingsRate < 20) obsItems.push({t:'⚠️ Low Savings Rate', d:`Your savings rate of ${savingsRate}% is below the recommended 20–30%. Consider reviewing discretionary expenses.`, c:'var(--red)'});
+  if(fv('emergency') < monthlyExpenses*3) obsItems.push({t:'⚠️ Inadequate Emergency Fund', d:`You have ${fmtINR(fv('emergency'))} in emergency funds. Aim for ${fmtINR(monthlyExpenses*6)} (6 months).`, c:'var(--red)'});
+  if(investAmt < netWorth*0.2) obsItems.push({t:'💡 Low Investment Ratio', d:'Most of your wealth is in physical assets. Consider increasing financial investments for better liquidity.', c:'var(--accent)'});
+  if(liabilities > netWorth*0.5) obsItems.push({t:'⚠️ High Debt Load', d:`Your liabilities (${fmtINR(liabilities)}) are significant relative to net worth. Prioritize debt reduction.`, c:'var(--red)'});
+  if(blended < inflation+2) obsItems.push({t:'💡 Review Return Expectations', d:`Your blended return expectation (${blended.toFixed(1)}%) barely beats inflation. Consider a higher equity allocation.`, c:'var(--accent)'});
+  obsItems.push({t:'✅ Consistent Investing', d:'Regular SIP investing regardless of market conditions is your biggest wealth-creation tool. Stay invested through volatility.', c:'var(--green)'});
+  obsItems.push({t:'✅ Annual Review', d:'Revisit this financial plan every year or after a major life event (job change, new child, large purchase).', c:'var(--green)'});
+
+  obs.innerHTML = obsItems.map(o=>`
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:14px 16px;background:var(--surface);border-left:3px solid ${o.c};border-radius:0 8px 8px 0;font-size:13px;">
+      <div>
+        <div style="font-weight:600;color:var(--highlight);margin-bottom:4px;">${o.t}</div>
+        <div style="color:var(--muted);line-height:1.6;">${o.d}</div>
+      </div>
+    </div>`).join('');
+}
+
+function calcSIP(FV, r, n) {
+  if(r === 0) return FV/n;
+  return (FV * r) / (Math.pow(1+r, n) - 1);
+}
+
+/* ─────────────────────────────────────
+   DOWNLOAD FUNCTIONS
+───────────────────────────────────── */
+function getExportData() {
+  const age = fv('age'), retireAge = fv('retireAge')||60, income = fv('income');
+  const inflation = fv('inflation')||6;
+  const currentYear = new Date().getFullYear();
+  const investAmt = holdings.reduce((s,h)=>s+(parseFloat(h.value)||0),0);
+  const liabilities = fv('homeLoan')+fv('personalLoan')+fv('carLoan')+fv('eduLoan')+fv('ccDues');
+  const physAssets = fv('homeVal')+fv('vehicleVal')+fv('reVal');
+  const netWorth = investAmt + physAssets - liabilities;
+  const total = Object.values(allocations).reduce((a,b)=>a+b,0)||100;
+  const eqR = fv('eqReturn')||12, debtR = fv('debtReturn')||7;
+  const goldR = fv('goldReturn')||8, reR = fv('reReturn')||9;
+  const blended = ((allocations.equity||0)*eqR + (allocations.debt||0)*debtR +
+    (allocations.gold||0)*goldR + (allocations.realestate||0)*reR +
+    (allocations.intl||0)*eqR + (allocations.cash||0)*4)/total;
+
+  return {age, retireAge, income, inflation, currentYear, investAmt, liabilities, physAssets, netWorth, blended};
+}
+
+function downloadExcel() {
+  const d = getExportData();
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Profile
+  const profileData = [
+    ['WealthMap — Financial Plan','','',''],
+    ['Generated on', new Date().toLocaleDateString('en-IN'),'',''],
+    ['','','',''],
+    ['PERSONAL PROFILE','','',''],
+    ['Name', gv('name'),'',''],
+    ['Age', fv('age'),'',''],
+    ['Retirement Age', fv('retireAge'),'',''],
+    ['Occupation', gv('occupation'),'',''],
+    ['City', gv('city'),'',''],
+    ['Annual Income (₹)', fv('income'),'',''],
+    ['Monthly Expenses (₹)', fv('expenses'),'',''],
+    ['Monthly Savings (₹)', fv('savings'),'',''],
+    ['','','',''],
+    ['FAMILY','','',''],
+    ['Marital Status', gv('marital'),'',''],
+    ['Children', fv('children'),'',''],
+    ['Risk Profile', gv('riskProfile'),'',''],
+    ['','','',''],
+    ['NET WORTH SUMMARY','','',''],
+    ['Investment Portfolio (₹)', d.investAmt,'',''],
+    ['Physical Assets (₹)', d.physAssets,'',''],
+    ['Total Liabilities (₹)', d.liabilities,'',''],
+    ['Net Worth (₹)', d.netWorth,'',''],
+    ['Blended Expected Return', d.blended.toFixed(2)+'%','',''],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(profileData), 'Profile');
+
+  // Sheet 2: Asset Allocation
+  const allocData = [['Asset Class','Allocation %','Expected Return %']];
+  ASSET_CLASSES.forEach(ac => allocData.push([ac.label, allocations[ac.key]+'%', '']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allocData), 'Asset Allocation');
+
+  // Sheet 3: Holdings
+  const hData = [['Asset Type','Name / Description','Current Value (₹)']];
+  holdings.forEach(h => hData.push([h.type||'', h.name||'', parseFloat(h.value)||0]));
+  hData.push(['','TOTAL', holdings.reduce((s,h)=>s+(parseFloat(h.value)||0),0)]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(hData), 'Holdings');
+
+  // Sheet 4: Goals
+  const gData = [['Goal','Type','Target Amount (₹)','Target Year','Years Away','Inflation-Adj Amount (₹)','Monthly SIP Needed (₹)','Priority']];
+  goals.forEach(g => {
+    const yrs = Math.max(0,(g.year||d.currentYear+5)-d.currentYear);
+    const inflated = (g.amount||0)*Math.pow(1+d.inflation/100,yrs);
+    const sip = yrs>0?calcSIP(inflated,d.blended/100/12,yrs*12):0;
+    gData.push([g.name||g.type||'Goal',g.type||'',g.amount||0,g.year||'',yrs,Math.round(inflated),Math.round(sip),g.priority||'']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gData), 'Goals');
+
+  // Sheet 5: MF Suggestions
+  const profile = gv('riskProfile')||'Moderate';
+  const filtered = MF_DATA.filter(m=>m.profiles.includes(profile));
+  const mfData = [['MF Category','Type','Expected Returns','Risk','Investment Horizon','Suitable For']];
+  filtered.forEach(m => mfData.push([m.cat,m.type,m.returns,m.risk,m.horizon,m.for]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mfData), 'MF Recommendations');
+
+  XLSX.writeFile(wb, `WealthMap_FinancialPlan_${gv('name')||'User'}.xlsx`);
+  showToast('Excel downloaded!');
+}
+
+function downloadCSV() {
+  const d = getExportData();
+  let csv = 'WEALTHMAP FINANCIAL PLAN\n\n';
+  csv += 'PERSONAL PROFILE\n';
+  csv += `Name,${gv('name')}\nAge,${fv('age')}\nRetire Age,${fv('retireAge')}\n`;
+  csv += `Annual Income,${fv('income')}\nRisk Profile,${gv('riskProfile')}\nNet Worth,${d.netWorth}\n\n`;
+  csv += 'GOALS\nName,Type,Target Amount,Target Year,Priority\n';
+  goals.forEach(g => csv += `${g.name||g.type},${g.type},${g.amount},${g.year},${g.priority}\n`);
+  csv += '\nHOLDINGS\nType,Name,Value\n';
+  holdings.forEach(h => csv += `${h.type},${h.name},${h.value}\n`);
+  csv += '\nASSET ALLOCATION\nAsset Class,Allocation %\n';
+  ASSET_CLASSES.forEach(ac => csv += `${ac.label},${allocations[ac.key]}%\n`);
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `WealthMap_${gv('name')||'User'}.csv`;
+  a.click();
+  showToast('CSV downloaded!');
+}
+
+function downloadPDF() {
+  const d = getExportData();
+  const name = gv('name') || 'User';
+  const currentYear = new Date().getFullYear();
+  const inflation = fv('inflation') || 6;
+
+  const goalsHTML = goals.map(g => {
+    const yrs = Math.max(0,(g.year||currentYear+5)-currentYear);
+    const inflated = (g.amount||0)*Math.pow(1+inflation/100,yrs);
+    const sip = yrs>0?calcSIP(inflated,d.blended/100/12,yrs*12):0;
+    return `<tr>
+      <td>${(g.name||g.type||'Goal').replace(/</g,'&lt;')}</td><td>${g.year||'?'}</td>
+      <td>&#8377;${((g.amount||0)/100000).toFixed(1)}L</td>
+      <td>&#8377;${(inflated/100000).toFixed(1)}L</td>
+      <td>&#8377;${Math.round(sip/500)*500}/mo</td>
+      <td>${(g.priority||'').replace(/</g,'&lt;')}</td></tr>`;
+  }).join('');
+
+  const holdingHTML = holdings.map(h=>`<tr>
+    <td>${(h.type||'').replace(/</g,'&lt;')}</td>
+    <td>${(h.name||'').replace(/</g,'&lt;')}</td>
+    <td>&#8377;${(parseFloat(h.value||0)/100000).toFixed(1)}L</td></tr>`).join('');
+
+  const profile = gv('riskProfile')||'Moderate';
+  const mfFiltered = MF_DATA.filter(m=>m.profiles.includes(profile));
+  const mfHTML = mfFiltered.map(m=>`<tr>
+    <td>${m.cat}</td><td>${m.type}</td><td>${m.returns}</td><td>${m.risk}</td><td>${m.horizon}</td></tr>`).join('');
+
+  const sipPlan = getSIPPlan(profile, fv('savings'));
+  const sipHTML = sipPlan.map(s=>`<tr><td>${s.cat}</td><td>&#8377;${s.amount.toLocaleString('en-IN')}/mo</td><td>${s.pct}%</td></tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+  <title>WealthMap — ${name}'s Financial Plan</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;color:#1a1a2e;line-height:1.6;font-size:13px;}
+    h1{font-size:26px;color:#1a1a2e;border-bottom:3px solid #c9a96e;padding-bottom:10px;margin-bottom:6px;}
+    h2{font-size:13px;color:#c9a96e;margin:22px 0 8px;text-transform:uppercase;letter-spacing:0.07em;font-weight:700;}
+    .meta{color:#888;font-size:12px;margin-bottom:20px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}
+    .kpi{border:1px solid #e5e0d8;border-radius:8px;padding:12px 14px;background:#fafaf8;}
+    .kpi-l{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:0.06em;}
+    .kpi-v{font-size:20px;font-weight:700;color:#1a1a2e;margin-top:3px;}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px;}
+    th{background:#f5f3ee;padding:8px 10px;text-align:left;color:#888;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;}
+    td{padding:8px 10px;border-bottom:1px solid #f0ece4;vertical-align:top;}
+    tr:last-child td{border-bottom:none;}
+    .tag{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;}
+    .critical{color:#c0392b;font-weight:700;}
+    .high{color:#c9a96e;font-weight:600;}
+    .medium{color:#7eb8a4;}
+    .section{margin-bottom:24px;padding:16px;border:1px solid #ece8e0;border-radius:10px;background:#fff;}
+    .footer{margin-top:32px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:12px;text-align:center;}
+    .nw-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0ece4;font-size:12px;}
+    .nw-row:last-child{border-bottom:none;font-weight:700;font-size:14px;color:#1a1a2e;}
+    @media print{body{padding:20px;}h2{page-break-after:avoid;}table{page-break-inside:avoid;}}
+  </style></head><body>
+  <h1>WealthMap &mdash; Financial Plan</h1>
+  <div class="meta">Prepared for: <strong>${name}</strong> &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-IN')} &nbsp;|&nbsp; Risk Profile: <strong>${profile}</strong> &nbsp;|&nbsp; Inflation assumed: <strong>${inflation}%</strong></div>
+
+  <div class="section">
+    <h2>&#128200; Key Financial Metrics</h2>
+    <div class="grid">
+      <div class="kpi"><div class="kpi-l">Net Worth</div><div class="kpi-v">&#8377;${(d.netWorth/10000000).toFixed(2)} Cr</div></div>
+      <div class="kpi"><div class="kpi-l">Investment Portfolio</div><div class="kpi-v">&#8377;${(d.investAmt/100000).toFixed(1)} L</div></div>
+      <div class="kpi"><div class="kpi-l">Blended Return</div><div class="kpi-v">${d.blended.toFixed(1)}%</div></div>
+      <div class="kpi"><div class="kpi-l">Annual Income</div><div class="kpi-v">&#8377;${(d.income/100000).toFixed(1)} L</div></div>
+      <div class="kpi"><div class="kpi-l">Monthly Savings</div><div class="kpi-v">&#8377;${fv('savings').toLocaleString('en-IN')}</div></div>
+      <div class="kpi"><div class="kpi-l">Years to Retire</div><div class="kpi-v">${Math.max(0,(fv('retireAge')||60)-fv('age'))} yrs</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>&#127968; Net Worth Breakdown</h2>
+    <div class="nw-row"><span>Investment Portfolio</span><span>&#8377;${(d.investAmt/100000).toFixed(1)} L</span></div>
+    <div class="nw-row"><span>Primary Residence</span><span>&#8377;${(fv('homeVal')/100000).toFixed(1)} L</span></div>
+    <div class="nw-row"><span>Other Real Estate</span><span>&#8377;${(fv('reVal')/100000).toFixed(1)} L</span></div>
+    <div class="nw-row"><span>Vehicles</span><span>&#8377;${(fv('vehicleVal')/100000).toFixed(1)} L</span></div>
+    <div class="nw-row"><span style="color:#c0392b">Less: Total Liabilities</span><span style="color:#c0392b">- &#8377;${(d.liabilities/100000).toFixed(1)} L</span></div>
+    <div class="nw-row"><span>Net Worth</span><span>&#8377;${(d.netWorth/10000000).toFixed(2)} Cr</span></div>
+  </div>
+
+  <div class="section">
+    <h2>&#128197; Goal-Based Plan</h2>
+    <table><thead><tr><th>Goal</th><th>Target Year</th><th>Today's Value</th><th>Inflation-Adjusted</th><th>Monthly SIP Needed</th><th>Priority</th></tr></thead>
+    <tbody>${goalsHTML}</tbody></table>
+  </div>
+
+  <div class="section">
+    <h2>&#128202; Current Investment Portfolio</h2>
+    <table><thead><tr><th>Type</th><th>Name / Description</th><th>Current Value</th></tr></thead>
+    <tbody>${holdingHTML}</tbody></table>
+  </div>
+
+  <div class="section">
+    <h2>&#127919; Suggested Monthly SIP Plan (${profile})</h2>
+    <table><thead><tr><th>Fund Category</th><th>Monthly SIP Amount</th><th>% of Surplus</th></tr></thead>
+    <tbody>${sipHTML}</tbody></table>
+  </div>
+
+  <div class="section">
+    <h2>&#128269; Recommended MF Categories</h2>
+    <table><thead><tr><th>Category</th><th>Type</th><th>Expected Returns</th><th>Risk</th><th>Horizon</th></tr></thead>
+    <tbody>${mfHTML}</tbody></table>
+  </div>
+
+  <div class="footer">
+    WealthMap Financial Planning Suite &mdash; This plan is for informational purposes only and does not constitute financial advice.<br>
+    Please consult a SEBI-registered Investment Adviser (RIA) before making investment decisions.
+  </div>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  try {
+    const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.target   = '_blank';
+    a.rel      = 'noopener';
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+    showToast('PDF opened — press Ctrl+P / Cmd+P to print/save!');
+  } catch(e) {
+    showToast('Use Ctrl+P to print this page as PDF.');
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = '✓ '+msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+/* ─────────────────────────────────────
+   COUNTRY INFLATION DATA
+───────────────────────────────────── */
+const COUNTRY_INFLATION = {
+  IN:  { rate:6.0,  label:'India',            note:'India\'s RBI targets 4% (±2%). Historical CPI avg 5–7%. Education & healthcare inflate at 8–12%. Use 6% for conservative planning.' },
+  PK:  { rate:20.0, label:'Pakistan',          note:'Pakistan has faced persistent high inflation (15–25%). Use 18–22% for financial goals.' },
+  BD:  { rate:9.0,  label:'Bangladesh',        note:'Bangladesh CPI typically 7–10%. Urban food and housing costs rise faster.' },
+  LK:  { rate:12.0, label:'Sri Lanka',         note:'Sri Lanka post-2022 crisis: inflation spiked to 70%, now stabilising ~10–14%. Use 12% cautiously.' },
+  NP:  { rate:7.0,  label:'Nepal',             note:'Nepal closely tracks Indian inflation + import costs. 6–8% is a realistic band.' },
+  SG:  { rate:3.0,  label:'Singapore',         note:'MAS target ~2%. Recent cost-of-living pressures have pushed it to 3–4%. Stable, well-managed.' },
+  MY:  { rate:3.0,  label:'Malaysia',          note:'Bank Negara targets ~3%. Malaysia has low and stable inflation historically.' },
+  TH:  { rate:3.0,  label:'Thailand',          note:'Thailand avg 1–3%. Relatively low inflation — conservative planning at 3%.' },
+  PH:  { rate:5.0,  label:'Philippines',       note:'BSP targets 2–4%. Recent spikes hit 8%. Use 5% for medium-term planning.' },
+  ID:  { rate:4.0,  label:'Indonesia',         note:'Bank Indonesia targets 2.5–4.5%. Avg ~4%. Food prices can be volatile.' },
+  VN:  { rate:4.0,  label:'Vietnam',           note:'Vietnam avg 3–4.5%. Rapid growth economy — some upward pressure on costs.' },
+  AE:  { rate:3.0,  label:'UAE / Dubai',       note:'UAE dirhams pegged to USD. Inflation ~2–4%. Housing and education costs are high in absolute terms.' },
+  SA:  { rate:3.0,  label:'Saudi Arabia',      note:'SAR pegged to USD. Inflation ~2–3%. VAT introduced at 15% in 2020 — factor into lifestyle costs.' },
+  QA:  { rate:3.0,  label:'Qatar',             note:'Qatar avg ~3%. Stable currency pegged to USD. Education / healthcare can be expensive.' },
+  KW:  { rate:3.0,  label:'Kuwait',            note:'Kuwait avg 2–3.5%. Very stable, heavily subsidised economy.' },
+  BH:  { rate:3.0,  label:'Bahrain',           note:'Bahrain avg ~2–3%. USD-pegged currency, stable cost of living.' },
+  US:  { rate:3.5,  label:'USA',               note:'Fed targets 2%. Post-pandemic inflation hit 9%; now ~3–4%. Use 3.5% for long-term planning. Healthcare inflates faster.' },
+  GB:  { rate:3.5,  label:'UK',                note:'Bank of England targets 2%. Recent inflation hit 11%; now ~4%. Use 3.5% for medium-term goals.' },
+  AU:  { rate:3.5,  label:'Australia',         note:'RBA targets 2–3%. Recent inflation ~4–5%. 3.5% is a balanced planning rate.' },
+  CA:  { rate:3.0,  label:'Canada',            note:'Bank of Canada targets 2%. Avg ~2.5–3.5%. Housing costs are a major driver.' },
+  DE:  { rate:3.0,  label:'Germany / EU',      note:'ECB targets 2%. Post-2022 energy crisis pushed EU inflation to 10%; now normalising ~3%.' },
+  NZ:  { rate:3.5,  label:'New Zealand',       note:'RBNZ targets 1–3%. Recent inflation ~4–5%. 3.5% for conservative planning.' },
+  JP:  { rate:2.5,  label:'Japan',             note:'Japan historically had near-zero inflation (deflation risk). Recent cost push ~2–3%. 2.5% is prudent.' },
+  ZA:  { rate:6.0,  label:'South Africa',      note:'SARB targets 3–6%. Avg ~5–7%. Electricity/food volatile. Use 6–7% for realistic planning.' },
+  NG:  { rate:22.0, label:'Nigeria',           note:'CBN has struggled with hyperinflation (20–30%). Use 20%+ for goal planning; review frequently.' },
+  KE:  { rate:8.0,  label:'Kenya',             note:'CBK targets 5%. Recent inflation 8–10%. Use 8% as planning rate.' },
+  XX:  { rate:6.0,  label:'Custom',            note:'You have chosen a custom rate. Adjust the slider / input to match your country\'s current CPI trend.' },
+};
+
+function onCountryChange(code) {
+  const data = COUNTRY_INFLATION[code];
+  if(!data) return;
+  const rate = data.rate;
+  document.getElementById('inflation').value = rate;
+  document.getElementById('inflRV').textContent = rate.toFixed(1)+'%';
+  document.getElementById('inflManual').value = rate;
+  document.getElementById('inflBanner').innerHTML =
+    `<strong style="color:var(--accent);">${data.label} — ${rate}% planning rate</strong><br>${data.note}`;
+}
+
+function syncInflInput(val) {
+  document.getElementById('inflManual').value = parseFloat(val).toFixed(1);
+}
+function syncInflSlider(val) {
+  const v = Math.min(25, Math.max(1, parseFloat(val)||6));
+  document.getElementById('inflation').value = v;
+  document.getElementById('inflRV').textContent = v.toFixed(1)+'%';
+}
+
+/* ─────────────────────────────────────
+   INIT
+───────────────────────────────────── */
+function init() {
+  updateDots();
+  buildAllocRows();
+  // Default country = India
+  onCountryChange('IN');
+  // Default holding
+  addHolding();
+  // Default goals — common starter goals
+  addGoal();
+}
+
+init();
+</script>
+</body>
+</html>
