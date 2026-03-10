@@ -1053,7 +1053,11 @@ function addHolding(data={}) {
 function renderHoldings() {
   const c = document.getElementById('holdingRows');
   c.innerHTML = '';
-  if(holdings.length===0) { addHolding(); return; }
+  if(holdings.length===0) {
+    c.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">No investments added yet. Use the import above or click Add Row.</p>';
+    updatePortfolioTotal();
+    return;
+  }
   const header = document.createElement('div');
   header.className = 'holding-row';
   header.style.marginBottom = '4px';
@@ -2077,12 +2081,7 @@ function syncInflSlider(val) {
 function init() {
   updateDots();
   buildAllocRows();
-  // Default country = India
   onCountryChange('IN');
-  // Default holding
-  addHolding();
-  // Default goals — common starter goals
-  addGoal();
 }
 
 init();
