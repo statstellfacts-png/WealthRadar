@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WealthMap — Financial Planning Suite</title>
+<title>WealthRadar — Financial Planning Suite</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -337,7 +337,7 @@
   <div class="logo">
     <div class="logo-mark">W</div>
     <div>
-      <div class="logo-text">WealthMap</div>
+      <div class="logo-text">WealthRadar</div>
       <div class="logo-sub">Financial Planning Suite</div>
     </div>
   </div>
@@ -1385,7 +1385,7 @@ function downloadHoldingsTemplate() {
     ['Insurance','LIC Jeevan Anand (Surrender Value)','150000'],
   ];
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Holdings Template');
-  XLSX.writeFile(wb, 'WealthMap_Holdings_Template.xlsx');
+  XLSX.writeFile(wb, 'WealthRadar_Holdings_Template.xlsx');
   showToast('Template downloaded!');
 }
 
@@ -1805,7 +1805,7 @@ function downloadExcel() {
 
   // Sheet 1: Profile
   const profileData = [
-    ['WealthMap — Financial Plan','','',''],
+    ['WealthRadar — Financial Plan','','',''],
     ['Generated on', new Date().toLocaleDateString('en-IN'),'',''],
     ['','','',''],
     ['PERSONAL PROFILE','','',''],
@@ -1860,7 +1860,7 @@ function downloadExcel() {
   filtered.forEach(m => mfData.push([m.cat,m.type,m.returns,m.risk,m.horizon,m.for]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(mfData), 'MF Recommendations');
 
-  XLSX.writeFile(wb, `WealthMap_FinancialPlan_${gv('name')||'User'}.xlsx`);
+  XLSX.writeFile(wb, `WealthRadar_FinancialPlan_${gv('name')||'User'}.xlsx`);
   showToast('Excel downloaded!');
 }
 
@@ -1880,7 +1880,7 @@ function downloadCSV() {
   const blob = new Blob([csv], {type:'text/csv'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `WealthMap_${gv('name')||'User'}.csv`;
+  a.download = `WealthRadar_${gv('name')||'User'}.csv`;
   a.click();
   showToast('CSV downloaded!');
 }
@@ -1917,7 +1917,7 @@ function downloadPDF() {
   const sipHTML = sipPlan.map(s=>`<tr><td>${s.cat}</td><td>&#8377;${s.amount.toLocaleString('en-IN')}/mo</td><td>${s.pct}%</td></tr>`).join('');
 
   const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-  <title>WealthMap — ${name}'s Financial Plan</title>
+  <title>WealthRadar — ${name}'s Financial Plan</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'Segoe UI',Arial,sans-serif;padding:40px;color:#1a1a2e;line-height:1.6;font-size:13px;}
@@ -1942,7 +1942,7 @@ function downloadPDF() {
     .nw-row:last-child{border-bottom:none;font-weight:700;font-size:14px;color:#1a1a2e;}
     @media print{body{padding:20px;}h2{page-break-after:avoid;}table{page-break-inside:avoid;}}
   </style></head><body>
-  <h1>WealthMap &mdash; Financial Plan</h1>
+  <h1>WealthRadar &mdash; Financial Plan</h1>
   <div class="meta">Prepared for: <strong>${name}</strong> &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-IN')} &nbsp;|&nbsp; Risk Profile: <strong>${profile}</strong> &nbsp;|&nbsp; Inflation assumed: <strong>${inflation}%</strong></div>
 
   <div class="section">
@@ -1992,7 +1992,7 @@ function downloadPDF() {
   </div>
 
   <div class="footer">
-    WealthMap Financial Planning Suite &mdash; This plan is for informational purposes only and does not constitute financial advice.<br>
+    WealthRadar Financial Planning Suite &mdash; This plan is for informational purposes only and does not constitute financial advice.<br>
     Please consult a SEBI-registered Investment Adviser (RIA) before making investment decisions.
   </div>
   <script>window.onload=function(){window.print();}<\/script>
