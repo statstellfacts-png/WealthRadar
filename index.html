@@ -1171,9 +1171,7 @@ function processFile(file) {
 function parseCSV(text) {
   // Handle quoted fields, commas, newlines
   const rows = [];
-  const lines = text.split(/
-?
-/);
+  const lines = text.split(/\r?\n/);
   lines.forEach(line => {
     if(!line.trim()) return;
     const cols = [];
