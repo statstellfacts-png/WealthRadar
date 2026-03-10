@@ -713,8 +713,56 @@
 
     <div class="section card">
       <div class="card-title"><span>📂</span> Existing Investments</div>
+
+      <!-- UPLOAD PANEL -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--highlight);margin-bottom:3px;">📤 Import from Excel / CSV</div>
+            <div style="font-size:12px;color:var(--muted);">Upload your statement or use our template. Columns: <code style="background:rgba(255,255,255,.06);padding:1px 6px;border-radius:4px;font-size:11px;">Asset Type, Name, Current Value</code></div>
+          </div>
+          <button class="btn btn-ghost" style="font-size:12px;padding:8px 16px;" onclick="downloadHoldingsTemplate()">⬇ Download Template</button>
+        </div>
+        <!-- Drop zone -->
+        <div id="dropZone"
+          style="border:2px dashed var(--border);border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;"
+          onclick="document.getElementById('fileUpload').click()"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)">
+          <input type="file" id="fileUpload" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(event)">
+          <div style="font-size:32px;margin-bottom:8px;">📁</div>
+          <div style="font-size:14px;color:var(--text);font-weight:500;">Click to browse or drag &amp; drop your file here</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;">Supports .xlsx, .xls, .csv</div>
+        </div>
+        <!-- Upload status / preview -->
+        <div id="uploadStatus" style="display:none;margin-top:14px;">
+          <div id="uploadMsg" style="font-size:13px;margin-bottom:10px;"></div>
+          <div id="uploadPreview" style="overflow-x:auto;"></div>
+          <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+            <button class="btn btn-primary" style="font-size:13px;padding:9px 20px;" onclick="confirmImport()">&#10003; Import These Records</button>
+            <button class="btn btn-ghost" style="font-size:13px;padding:9px 20px;" onclick="cancelImport()">&#10007; Cancel</button>
+          </div>
+        </div>
+        <!-- Column mapper -->
+        <div id="colMapper" style="display:none;margin-top:14px;background:rgba(201,169,110,.06);border:1px solid rgba(201,169,110,.2);border-radius:10px;padding:16px;">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:12px;">🔧 Map your columns</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">We could not auto-detect your columns. Please map them below:</div>
+          <div class="grid3" style="gap:12px;" id="colMapFields"></div>
+          <button class="btn btn-primary" style="font-size:13px;padding:9px 20px;margin-top:14px;" onclick="applyColumnMap()">Apply Mapping</button>
+        </div>
+      </div>
+
+      <!-- MANUAL ENTRY -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--highlight);">&#9998; Manual Entry</div>
+        <div id="portfolioTotal" style="font-size:13px;color:var(--accent);font-weight:600;"></div>
+      </div>
       <div id="holdingRows"></div>
-      <button class="add-row-btn" onclick="addHolding()">＋ Add Investment</button>
+      <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+        <button class="add-row-btn" onclick="addHolding()">&#65291; Add Row</button>
+        <button class="add-row-btn" style="border-color:var(--accent3);color:var(--accent3);" onclick="clearAllHoldings()">&#128465; Clear All</button>
+      </div>
     </div>
 
     <div class="section card">
@@ -1038,11 +1086,305 @@ function renderHoldings() {
     `;
     c.appendChild(row);
   });
+  updatePortfolioTotal();
 }
 
 function removeHolding(i) {
   holdings.splice(i,1);
   renderHoldings();
+}
+
+function clearAllHoldings() {
+  if(holdings.length === 0) return;
+  if(confirm('Clear all ' + holdings.length + ' holding(s)?')) {
+    holdings = [];
+    renderHoldings();
+  }
+}
+
+function updatePortfolioTotal() {
+  const total = holdings.reduce((s,h)=>s+(parseFloat(h.value)||0),0);
+  const el = document.getElementById('portfolioTotal');
+  if(el) el.textContent = holdings.length > 0 ? 'Total: ' + fmtINR(total) + ' (' + holdings.length + ' items)' : '';
+}
+
+/* ─────────────────────────────────────
+   FILE UPLOAD — Excel / CSV Import
+───────────────────────────────────── */
+let pendingImportRows = []; // rows parsed but not yet confirmed
+
+function handleDragOver(e) {
+  e.preventDefault();
+  const dz = document.getElementById('dropZone');
+  dz.style.borderColor = 'var(--accent)';
+  dz.style.background  = 'rgba(201,169,110,.05)';
+}
+function handleDragLeave(e) {
+  const dz = document.getElementById('dropZone');
+  dz.style.borderColor = 'var(--border)';
+  dz.style.background  = '';
+}
+function handleDrop(e) {
+  e.preventDefault();
+  handleDragLeave(e);
+  const file = e.dataTransfer.files[0];
+  if(file) processFile(file);
+}
+function handleFileUpload(e) {
+  const file = e.target.files[0];
+  if(file) processFile(file);
+  e.target.value = ''; // reset so same file can be re-uploaded
+}
+
+function processFile(file) {
+  const name = file.name.toLowerCase();
+  const isCSV  = name.endsWith('.csv');
+  const isXLSX = name.endsWith('.xlsx') || name.endsWith('.xls');
+  if(!isCSV && !isXLSX) {
+    showUploadError('Please upload a .csv, .xlsx or .xls file.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let rows = [];
+      if(isCSV) {
+        rows = parseCSV(e.target.result);
+      } else {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      }
+      handleParsedRows(rows, file.name);
+    } catch(err) {
+      showUploadError('Could not read file: ' + err.message);
+    }
+  };
+  if(isCSV) reader.readAsText(file);
+  else       reader.readAsBinaryString(file);
+}
+
+function parseCSV(text) {
+  // Handle quoted fields, commas, newlines
+  const rows = [];
+  const lines = text.split(/
+?
+/);
+  lines.forEach(line => {
+    if(!line.trim()) return;
+    const cols = [];
+    let cur = '', inQ = false;
+    for(let i=0; i<line.length; i++) {
+      const c = line[i];
+      if(c==='"') { inQ=!inQ; }
+      else if(c===',' && !inQ) { cols.push(cur.trim()); cur=''; }
+      else { cur+=c; }
+    }
+    cols.push(cur.trim());
+    rows.push(cols);
+  });
+  return rows;
+}
+
+// Keyword maps for auto column detection
+const TYPE_KEYWORDS  = ['type','asset type','category','instrument','asset class','scheme type','fund type'];
+const NAME_KEYWORDS  = ['name','fund name','scheme','scheme name','security','stock','description','folio','instrument name','fund'];
+const VALUE_KEYWORDS = ['value','current value','market value','amount','current amount','nav value','corpus','balance','invested value','portfolio value','present value'];
+
+function findCol(headers, keywords) {
+  const h = headers.map(x=>(x||'').toString().toLowerCase().trim());
+  for(const kw of keywords) {
+    const idx = h.findIndex(col => col.includes(kw));
+    if(idx >= 0) return idx;
+  }
+  return -1;
+}
+
+function handleParsedRows(rows, filename) {
+  // Filter empty rows
+  const nonEmpty = rows.filter(r => r.some(c => (c||'').toString().trim() !== ''));
+  if(nonEmpty.length < 2) { showUploadError('File appears empty or has only one row.'); return; }
+
+  const headers = nonEmpty[0].map(x=>(x||'').toString());
+  const dataRows = nonEmpty.slice(1);
+
+  const typeCol  = findCol(headers, TYPE_KEYWORDS);
+  const nameCol  = findCol(headers, NAME_KEYWORDS);
+  const valueCol = findCol(headers, VALUE_KEYWORDS);
+
+  if(nameCol >= 0 && valueCol >= 0) {
+    // Auto-detected — build preview
+    const parsed = dataRows.map(r => ({
+      type : typeCol >= 0 ? guessType(r[typeCol]||'') : 'Equity MF',
+      name : (r[nameCol]||'').toString().trim(),
+      value: parseFloat((r[valueCol]||'0').toString().replace(/[^0-9.-]/g,'')) || 0
+    })).filter(r => r.name && r.value > 0);
+
+    if(parsed.length === 0) { showUploadError('No valid rows found. Check that Name and Value columns have data.'); return; }
+    pendingImportRows = parsed;
+    showPreview(parsed, filename, headers, typeCol, nameCol, valueCol);
+  } else {
+    // Need manual column mapping
+    showColMapper(headers, dataRows, filename);
+  }
+}
+
+// Guess asset type from free text
+function guessType(str) {
+  const s = str.toLowerCase();
+  if(s.includes('equity') || s.includes('elss') || s.includes('large') || s.includes('mid') || s.includes('small') || s.includes('flexi') || s.includes('multi')) return 'Equity MF';
+  if(s.includes('debt') || s.includes('liquid') || s.includes('gilt') || s.includes('bond') || s.includes('duration') || s.includes('credit')) return 'Debt MF';
+  if(s.includes('hybrid') || s.includes('balanced') || s.includes('advantage')) return 'Hybrid MF';
+  if(s.includes('gold') || s.includes('sgb')) return 'Gold';
+  if(s.includes('ppf') || s.includes('epf') || s.includes('pf')) return 'PPF / EPF';
+  if(s.includes('nps')) return 'NPS';
+  if(s.includes('fd') || s.includes('fixed') || s.includes('rd') || s.includes('recurring')) return 'FD / RD';
+  if(s.includes('stock') || s.includes('share') || s.includes('equity direct') || s.includes('nse') || s.includes('bse')) return 'Direct Equity';
+  if(s.includes('insurance') || s.includes('lic') || s.includes('ulip')) return 'Insurance';
+  if(s.includes('real estate') || s.includes('property') || s.includes('reit')) return 'Real Estate';
+  if(s.includes('crypto') || s.includes('bitcoin') || s.includes('eth')) return 'Crypto';
+  if(str.trim()) return str.trim(); // keep original if recognisable
+  return 'Other';
+}
+
+function showPreview(parsed, filename, headers, typeCol, nameCol, valueCol) {
+  const total = parsed.reduce((s,r)=>s+r.value,0);
+  const typeColors = {'Equity MF':'#c9a96e','Debt MF':'#6ba3d6','Hybrid MF':'#7eb8a4','Gold':'#f0c060',
+    'PPF / EPF':'#4caf82','NPS':'#4caf82','FD / RD':'#6ba3d6','Direct Equity':'#e07b6b','Other':'#7a7d8a'};
+
+  let table = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr style="border-bottom:1px solid var(--border);">
+      <th style="padding:8px 10px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;">#</th>
+      <th style="padding:8px 10px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;">Asset Type</th>
+      <th style="padding:8px 10px;text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;">Name / Fund</th>
+      <th style="padding:8px 10px;text-align:right;color:var(--muted);font-size:11px;text-transform:uppercase;">Current Value</th>
+    </tr></thead><tbody>`;
+
+  parsed.slice(0,50).forEach((r,i) => {
+    const tc = typeColors[r.type]||'#7a7d8a';
+    table += `<tr style="border-bottom:1px solid rgba(42,45,58,.4);">
+      <td style="padding:7px 10px;color:var(--muted);font-size:11px;">${i+1}</td>
+      <td style="padding:7px 10px;"><span style="background:rgba(255,255,255,.06);border:1px solid ${tc}33;color:${tc};padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">${r.type}</span></td>
+      <td style="padding:7px 10px;color:var(--text);font-weight:500;">${r.name.substring(0,55)}${r.name.length>55?'…':''}</td>
+      <td style="padding:7px 10px;text-align:right;color:var(--accent);font-weight:600;">${fmtINR(r.value)}</td>
+    </tr>`;
+  });
+  if(parsed.length > 50) {
+    table += `<tr><td colspan="4" style="padding:8px 10px;color:var(--muted);font-size:12px;text-align:center;">... and ${parsed.length-50} more rows</td></tr>`;
+  }
+  table += `<tr style="background:rgba(201,169,110,.07);border-top:2px solid var(--border);">
+    <td colspan="3" style="padding:9px 10px;font-weight:700;color:var(--highlight);">Total (${parsed.length} holdings)</td>
+    <td style="padding:9px 10px;text-align:right;font-weight:700;color:var(--accent);font-size:15px;">${fmtINR(total)}</td>
+  </tr></tbody></table>`;
+
+  const status = document.getElementById('uploadStatus');
+  const msg    = document.getElementById('uploadMsg');
+  const preview= document.getElementById('uploadPreview');
+  msg.innerHTML = `<span style="color:var(--green);font-weight:600;">✓ Parsed ${parsed.length} records</span> from <strong>${filename}</strong>`;
+  preview.innerHTML = table;
+  status.style.display = 'block';
+  document.getElementById('colMapper').style.display = 'none';
+}
+
+function showColMapper(headers, dataRows, filename) {
+  const mapper = document.getElementById('colMapper');
+  const fields = document.getElementById('colMapFields');
+  const makeSelect = (label, id) => {
+    const opts = headers.map((h,i)=>`<option value="${i}">${h||'Column '+(i+1)}</option>`).join('');
+    return `<div class="field">
+      <label>${label}</label>
+      <select id="map_${id}" style="font-size:13px;">
+        <option value="-1">— Skip —</option>${opts}
+      </select>
+    </div>`;
+  };
+  fields.innerHTML = makeSelect('Asset Type column','type') + makeSelect('Fund / Name column','name') + makeSelect('Current Value column','value');
+  // Store dataRows for later
+  mapper._dataRows = dataRows;
+  mapper._headers  = headers;
+  mapper._filename = filename;
+  mapper.style.display = 'block';
+  document.getElementById('uploadStatus').style.display = 'none';
+}
+
+function applyColumnMap() {
+  const mapper   = document.getElementById('colMapper');
+  const dataRows = mapper._dataRows;
+  const filename = mapper._filename;
+  const typeIdx  = parseInt(document.getElementById('map_type').value);
+  const nameIdx  = parseInt(document.getElementById('map_name').value);
+  const valueIdx = parseInt(document.getElementById('map_value').value);
+
+  if(nameIdx < 0 || valueIdx < 0) {
+    alert('Please map at least the Name and Value columns.');
+    return;
+  }
+  const parsed = dataRows.map(r => ({
+    type : typeIdx >= 0 ? guessType((r[typeIdx]||'').toString()) : 'Equity MF',
+    name : (r[nameIdx]||'').toString().trim(),
+    value: parseFloat((r[valueIdx]||'0').toString().replace(/[^0-9.-]/g,'')) || 0
+  })).filter(r => r.name && r.value > 0);
+
+  if(parsed.length === 0) { showUploadError('No valid rows after mapping. Please check the columns.'); return; }
+  pendingImportRows = parsed;
+  showPreview(parsed, filename, [], typeIdx, nameIdx, valueIdx);
+}
+
+function confirmImport() {
+  if(!pendingImportRows.length) return;
+  const existing = holdings.length;
+  pendingImportRows.forEach(r => {
+    holdings.push({ id: Date.now() + Math.random(), type: r.type, name: r.name, value: r.value });
+  });
+  renderHoldings();
+  // Reset upload UI
+  document.getElementById('uploadStatus').style.display = 'none';
+  document.getElementById('colMapper').style.display    = 'none';
+  document.getElementById('fileUpload').value = '';
+  const dz = document.getElementById('dropZone');
+  dz.style.borderColor = 'var(--accent2)';
+  dz.querySelector('div:nth-child(2)').textContent = '✓ Import complete!';
+  setTimeout(()=>{
+    dz.style.borderColor = 'var(--border)';
+    dz.querySelector('div:nth-child(2)').textContent = 'Click to browse or drag & drop your file here';
+  }, 3000);
+  pendingImportRows = [];
+  showToast('Imported ' + (holdings.length - existing) + ' holdings!');
+}
+
+function cancelImport() {
+  pendingImportRows = [];
+  document.getElementById('uploadStatus').style.display = 'none';
+  document.getElementById('colMapper').style.display    = 'none';
+  document.getElementById('fileUpload').value = '';
+}
+
+function showUploadError(msg) {
+  const status = document.getElementById('uploadStatus');
+  document.getElementById('uploadMsg').innerHTML = `<span style="color:var(--red);">⚠ ${msg}</span>`;
+  document.getElementById('uploadPreview').innerHTML = '';
+  status.style.display = 'block';
+  document.getElementById('colMapper').style.display = 'none';
+}
+
+function downloadHoldingsTemplate() {
+  const wb  = XLSX.utils.book_new();
+  const data = [
+    ['Asset Type','Name / Fund / Description','Current Value (₹)'],
+    ['Equity MF','Mirae Asset Large Cap Fund - Direct Growth','850000'],
+    ['Equity MF','Parag Parikh Flexi Cap Fund - Direct Growth','620000'],
+    ['Debt MF','HDFC Short Duration Fund','300000'],
+    ['Hybrid MF','ICICI Pru Balanced Advantage Fund','450000'],
+    ['Direct Equity','Reliance Industries Ltd','250000'],
+    ['PPF / EPF','Employee Provident Fund (EPF)','1200000'],
+    ['Gold','Sovereign Gold Bond - Series XII','180000'],
+    ['FD / RD','SBI Fixed Deposit 3 Year','500000'],
+    ['NPS','NPS Tier I - Moderate Lifecycle','280000'],
+    ['Insurance','LIC Jeevan Anand (Surrender Value)','150000'],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Holdings Template');
+  XLSX.writeFile(wb, 'WealthMap_Holdings_Template.xlsx');
+  showToast('Template downloaded!');
 }
 
 /* ─────────────────────────────────────
